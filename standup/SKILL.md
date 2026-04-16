@@ -40,11 +40,6 @@ If the file is missing or stale, tell the user and stop.
 
 For each goal, use `mcp__claude_ai_Linear__list_issues` (or `get_issue`) to fetch the status of every ticket listed under that goal.
 
-Determine the goal's overall status:
-- :large_green_circle: **Green** — ALL tickets are `Done`
-- :large_yellow_circle: **Yellow** — at least one ticket is actively being worked on (`In Progress`, `In Review`) and none are blocked
-- :red_circle: **Red** — any ticket is explicitly `Blocked`, or the goal has made no progress (all tickets still `To Do` / `Backlog`)
-
 ### 3. Gather related GitHub PRs
 
 First, determine the current GitHub username:
@@ -53,17 +48,27 @@ First, determine the current GitHub username:
 gh api user --jq '.login'
 ```
 
-For each ticket ID found in step 2, search for PRs whose title or branch contains the ticket identifier:
+For each ticket that is NOT `Done`, search for PRs:
 
 ```bash
-gh search prs --author=$GITHUB_USER --owner=$REPO_OWNER "$TICKET_ID" --sort=updated --json title,url,state,repository,mergedAt --limit 5
+gh search prs --author=$GITHUB_USER --owner=$REPO_OWNER "$TICKET_ID" --sort=updated --json title,state,url --limit 5
 ```
 
 Run these in parallel where possible.
 
 Note: `--owner` should be inferred from the current repo (`gh repo view --json owner --jq '.owner.login'`) or omitted if not in a repo context.
 
-### 4. Format the output (Slack-ready)
+### 4. Determine goal status
+
+For each goal, make a **judgment call** about whether the weekly goal will be completed by end of week (Friday). The status is NOT a mechanical roll-up of ticket states — it's a forecast:
+
+- :large_green_circle: **On track** — expected to hit the weekly outcome by Friday. Most tickets done, remaining work is straightforward and in progress.
+- :large_yellow_circle: **At risk** — might miss without help, scope change, or a decision. Examples: PR waiting on review for days, unclear requirements blocking progress, too much remaining work for the time left.
+- :red_circle: **Off track** — will miss unless the plan materially changes. Examples: work hasn't started, blocked with no workaround, key dependency not met.
+
+Use the ticket statuses, PR states, day of the week, volume of remaining work, and any `notes` from the YAML to inform the judgment.
+
+### 5. Format the output (Slack-ready)
 
 Present the standup in Slack mrkdwn format inside a single fenced code block so it can be copy-pasted directly.
 
@@ -71,35 +76,65 @@ Use Slack formatting rules:
 - `*bold*` for section headers (not markdown `**bold**`)
 - Bullet points with plain `-`
 - Use the actual emoji shortcodes: `:large_green_circle:`, `:large_yellow_circle:`, `:red_circle:`
-- IMPORTANT: The `<url|text>` mrkdwn link syntax does NOT work in Slack's composer (only via API). Do NOT include URLs — just show PR titles.
+- IMPORTANT: The `<url|text>` mrkdwn link syntax does NOT work in Slack's composer (only via API). Do NOT include URLs.
+- IMPORTANT: Do NOT include Linear ticket IDs (e.g., PROJ-1234) — they trigger the Linear bot to spam the Slack thread. Use summarised ticket titles instead.
 
-Structure:
+#### Ticket and PR formatting
+
+Each ticket is one line using its **summarised title** (short, no ID). If the ticket has an open PR that's relevant (needs review, blocking), append it inline:
 
 ```
-*Weekly Goals Status — {week date}*
+- Extract Staffology pay lines (BE) — `Done` :white_check_mark:
+- Employee Portal bank details lock (FE) — `In Progress`, PR needs review
+- Audit trail frontend page — `In Progress`
+```
+
+Rules for ticket lines:
+- Summarise the ticket title to be short and clear — strip prefixes like `[FE]`, `[BE]`, `[MW]` and use parenthetical tags instead: `(FE)`, `(BE)`, `(MW)`
+- Append `:white_check_mark:` after `Done` tickets
+- If the ticket has an open PR that needs action, append: `, PR needs review` or `, PR open`
+- If the ticket has multiple PRs, only mention the most relevant one (usually the open one)
+- Don't mention merged PRs unless the ticket is still in progress (indicates partial work)
+- For goals where all tickets are `Done`, skip individual ticket lines — just say "All tickets complete"
+
+#### Overall structure
+
+```
+*Weekly Goals — {week date}*
 
 :large_green_circle: *Goal description*
-- PROJ-1234: Ticket title — `Done`
+*Today:*
+- All tickets complete
+*Blockers:* None
 
 :large_yellow_circle: *Goal description*
-- PROJ-1234: Ticket title — `In Progress`
-  - PR: PR title here (`OPEN`)
-- PROJ-5678: Ticket title — `Done` :white_check_mark:
+*Today:*
+- Working on audit trail frontend page
+- Next up: CSV export and feature flag
+*Blockers:* Tight on time — 2 tickets remaining with 3 days left
 
-:red_circle: *Goal description* — _blocked on X_
-- PROJ-1234: Ticket title — `Blocked`
+:red_circle: *Goal description*
+*Today:*
+- Starting implementation — design agreed, coding begins today
+*Blockers:* Work hasn't started, unlikely to land without deprioritising something else
 ```
 
 Rules:
-- One section per goal, prefixed with its status emoji, goal description in bold
-- Under each goal, list its tickets with Linear status
-- Show PR titles (no URLs) with their state (`OPEN`, `MERGED`) for yellow/red goals
-- If a goal has `notes` in the YAML, append them as italicized context after the goal description
-- For green goals, keep it brief — just confirm done, no PR listings
-- For done tickets, add :white_check_mark: after the status
-- Keep it concise — one line per ticket, PRs indented under their ticket
+- One section per goal, prefixed with its status emoji
+- *Today:* — 1-3 bullets describing what will be worked on today, inferred from in-progress/to-do tickets and open PRs. Use natural language, not ticket titles.
+- *Blockers:* — `None` if clear, otherwise name the blocker, who can unblock it, and any PRs needing review. Don't be shy about naming people.
+- Under *Today:*, optionally include ticket status lines for goals that are partially complete (mix of done and in-progress). Skip them for fully done or fully not-started goals.
+- Keep it concise — the whole standup should be scannable in 30 seconds
 
-### 5. Updating weekly goals
+Legend (include at the bottom):
+
+```
+:large_green_circle: On track — expected to hit weekly outcome
+:large_yellow_circle: At risk — might miss without help/scope change/decision
+:red_circle: Off track — will miss unless plan materially changes
+```
+
+### 6. Updating weekly goals
 
 If the user asks to "update goals" or "set this week's goals", help them edit `~/.claude/weekly-goals.yaml`:
 - Ask them to provide the new goals
