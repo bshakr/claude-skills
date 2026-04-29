@@ -64,7 +64,8 @@ For each goal, make a **judgment call** about whether the weekly goal will be co
 
 - :large_green_circle: **On track** — expected to hit the weekly outcome by Friday. Most tickets done, remaining work is straightforward and in progress.
 - :large_yellow_circle: **At risk** — might miss without help, scope change, or a decision. Examples: PR waiting on review for days, unclear requirements blocking progress, too much remaining work for the time left.
-- :red_circle: **Off track** — will miss unless the plan materially changes. Examples: work hasn't started, blocked with no workaround, key dependency not met.
+- :red_circle: **Off track** — will miss unless the plan materially changes. Examples: committed work blocked with no workaround, key dependency not met, in-flight work derailed.
+- :white_circle: **Not started** — work hasn't begun yet but isn't off track. Use for stretch goals, deprioritised items, or work intentionally deferred. Distinct from `:red_circle:`, which is for committed work that's failing.
 
 Use the ticket statuses, PR states, day of the week, volume of remaining work, and any `notes` from the YAML to inform the judgment.
 
@@ -75,7 +76,7 @@ Present the standup in Slack mrkdwn format inside a single fenced code block so 
 Use Slack formatting rules:
 - `*bold*` for section headers (not markdown `**bold**`)
 - Bullet points with plain `-`
-- Use the actual emoji shortcodes: `:large_green_circle:`, `:large_yellow_circle:`, `:red_circle:`
+- Use the actual emoji shortcodes: `:large_green_circle:`, `:large_yellow_circle:`, `:red_circle:`, `:white_circle:`
 - IMPORTANT: The `<url|text>` mrkdwn link syntax does NOT work in Slack's composer (only via API). Do NOT include URLs.
 - IMPORTANT: Do NOT include Linear ticket IDs (e.g., PROJ-1234) — they trigger the Linear bot to spam the Slack thread. Use summarised ticket titles instead.
 
@@ -115,8 +116,13 @@ Rules for ticket lines:
 
 :red_circle: *Goal description*
 *Today:*
-- Starting implementation — design agreed, coding begins today
-*Blockers:* Work hasn't started, unlikely to land without deprioritising something else
+- Blocked on backend API — escalating to unblock today
+*Blockers:* Backend dependency not delivered, will miss unless scope dropped
+
+:white_circle: *Stretch goal description*
+*Today:*
+- Not started — will pick up if primary goals land early
+*Blockers:* None — capacity-dependent
 ```
 
 Rules:
@@ -132,6 +138,7 @@ Legend (include at the bottom):
 :large_green_circle: On track — expected to hit weekly outcome
 :large_yellow_circle: At risk — might miss without help/scope change/decision
 :red_circle: Off track — will miss unless plan materially changes
+:white_circle: Not started — stretch / deferred / not yet picked up
 ```
 
 ### 6. Updating weekly goals
