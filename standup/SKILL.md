@@ -19,14 +19,35 @@ goals:
     tickets:
       - PROJ-1234
       - PROJ-1235
+    effort: medium
+    gated_by: design
     notes: "Blocked on design review until Wednesday"
   - description: "Fix checkout page performance"
     tickets:
       - PROJ-1300
+    effort: small
 ```
 
 - `week`: the Monday/Friday date range for the current cycle
-- `goals`: list of goals, each with a `description`, `tickets` (Linear issue IDs), and optional `notes`
+- `goals`: list of goals, each with:
+  - `description` — short outcome statement
+  - `tickets` — Linear issue IDs
+  - `effort` (optional) — code-writing size with Claude Code: `xsmall` | `small` | `medium` | `large` (see sizing reference below)
+  - `gated_by` (optional) — `review` | `design` | `external` | `decision` | `none`. Names the human-loop bottleneck that won't compress with Claude Code velocity. Default `none`.
+  - `notes` (optional) — anything the forecaster should know
+
+#### Effort sizing reference (Claude Code-assisted)
+
+These are *code-writing* estimates assuming Claude Code does most of the typing. They do NOT include review latency, design wait, or external dependencies — those go in `gated_by`.
+
+| Size | Wall-clock to a ready-for-review PR | Examples |
+|------|-------------------------------------|----------|
+| `xsmall` | < 1 hour | Copy tweak, single-file rename, one-line config |
+| `small` | half a day or less | Single component, one CRUD endpoint, narrow refactor |
+| `medium` | 1–2 days | Multi-file feature, FE+BE wiring, new card with API hooks |
+| `large` | 3+ days | Cross-repo work, new subsystem, schema migration with backfill |
+
+Rule of thumb: if the *code* is small but the goal still won't land, the bottleneck is `gated_by`, not effort.
 
 ## Steps
 
@@ -67,7 +88,23 @@ For each goal, make a **judgment call** about whether the weekly goal will be co
 - :red_circle: **Off track** — will miss unless the plan materially changes. Examples: committed work blocked with no workaround, key dependency not met, in-flight work derailed.
 - :white_circle: **Not started** — work hasn't begun yet but isn't off track. Use for stretch goals, deprioritised items, or work intentionally deferred. Distinct from `:red_circle:`, which is for committed work that's failing.
 
-Use the ticket statuses, PR states, day of the week, volume of remaining work, and any `notes` from the YAML to inform the judgment.
+Use the ticket statuses, PR states, day of the week, `effort`, `gated_by`, and any `notes` from the YAML to inform the judgment.
+
+#### Forecasting with effort + gating
+
+The user works with Claude Code, so code-writing is *fast*. Most missed estimates come from confusing code-writing time with human-loop time. Weight the forecast accordingly:
+
+- **Code-writing bottleneck** (no `gated_by`, or `gated_by: none`):
+  - `xsmall` / `small` remaining → green even with 1 day left
+  - `medium` remaining → green with 2+ days left, yellow with 1 day
+  - `large` remaining → yellow with 3+ days, red with less
+- **Human-loop bottleneck** (`gated_by: review | design | external | decision`):
+  - PR open and review pending → status depends on review SLA, not code size. Yellow if waiting >24h, red if dependency not delivered.
+  - Design / decision pending → yellow if expected this week, red if not committed.
+  - External dependency missing → red unless explicitly promised this week.
+- **Effort + gating combined**: a `small` goal `gated_by: review` with PR sitting 2 days = yellow despite tiny code surface. A `large` goal with no gating and Claude Code in flight = green if started.
+
+Default to optimism on code volume, pessimism on human-loop time. When in doubt, name the *bottleneck* in the *Blockers:* line so the forecast is auditable.
 
 ### 5. Format the output (Slack-ready)
 
