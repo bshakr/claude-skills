@@ -6,8 +6,8 @@ Personal collection of [Claude Code skills](https://docs.claude.com/en/docs/clau
 
 | Skill | Version | Purpose |
 |-------|---------|---------|
-| [`standup`](./standup) | 1.1.0 | Generate a daily standup report against weekly goals, cross-referencing Linear tickets and GitHub PRs, formatted for Slack. |
-| [`pr-comments`](./pr-comments) | — | Read PR review comments, evaluate validity, fix valid ones, commit, push, and draft replies. |
+| [`standup`](./standup) | 1.3.0 | Generate a daily standup report against weekly goals, cross-referencing Linear tickets and GitHub PRs, formatted for Slack. Supports sprint-themed quotes/facts at the top. |
+| [`pr-comments`](./pr-comments) | 1.1.0 | Resolve PR review comments end-to-end — fetch, evaluate validity, fix valid ones, commit, push, and draft replies for approval. |
 
 ## Install
 

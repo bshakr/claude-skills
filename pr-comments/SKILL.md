@@ -1,13 +1,57 @@
 ---
 name: pr-comments
-description: Read PR review comments, evaluate validity, fix valid ones, commit, push, and draft replies for approval. Use when the user wants to address review comments on a PR.
+description: Resolve PR review comments end-to-end — fetch comments, evaluate validity against the codebase, fix valid ones in code, commit + push, then draft replies for each comment and wait for user approval before posting. Use when the user wants to address review feedback on a PR.
 user-invocable: true
 argument-hint: "<pr-number-or-url>"
+version: 1.1.0
+repo: https://github.com/bshakr/claude-skills
+skill_path: pr-comments
 ---
 
 # Resolve PR Review Comments
 
 Given a PR, read all review comments, evaluate each for validity, fix the valid ones in code, commit and push, then draft reply text for each comment and wait for user approval before posting.
+
+## Step 0: Version check (run first, every invocation)
+
+Before doing anything else, check if a newer version of this skill is available. Skip the network call if it's been done in the last 24 hours.
+
+```bash
+SKILL_DIR="$HOME/.claude/skills/pr-comments"
+CACHE_FILE="$SKILL_DIR/.last-version-check"
+RAW_URL="https://raw.githubusercontent.com/bshakr/claude-skills/main/pr-comments/SKILL.md"
+LOCAL_VERSION=$(awk -F': ' '/^version:/ {print $2; exit}' "$SKILL_DIR/SKILL.md")
+NOW=$(date +%s)
+LAST_CHECK=$(cat "$CACHE_FILE" 2>/dev/null || echo 0)
+
+if [ $((NOW - LAST_CHECK)) -gt 86400 ]; then
+  REMOTE_VERSION=$(curl -fsSL "$RAW_URL" 2>/dev/null | awk -F': ' '/^version:/ {print $2; exit}')
+  echo "$NOW" > "$CACHE_FILE"
+  if [ -n "$REMOTE_VERSION" ] && [ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]; then
+    echo "UPDATE_AVAILABLE local=$LOCAL_VERSION remote=$REMOTE_VERSION"
+  else
+    echo "UP_TO_DATE version=$LOCAL_VERSION"
+  fi
+else
+  echo "SKIP_CHECK version=$LOCAL_VERSION"
+fi
+```
+
+If the output starts with `UPDATE_AVAILABLE`, ask the user before proceeding:
+
+> pr-comments skill update available: `{local}` → `{remote}`. Pull updates? (y/n)
+
+If yes, run:
+
+```bash
+git -C ~/code/claude-skills pull --ff-only
+```
+
+Then re-read this skill from disk before continuing.
+
+If the user declines or the skill isn't installed via git (no `.git` dir resolvable), continue with the current version and don't pester again until the next 24h window.
+
+If the output is `UP_TO_DATE` or `SKIP_CHECK`, proceed silently to Step 1.
 
 ## Steps
 

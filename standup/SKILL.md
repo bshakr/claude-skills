@@ -2,7 +2,7 @@
 name: standup
 description: Generate a daily standup status report against weekly goals, cross-referencing Linear tickets and GitHub PRs, formatted for Slack.
 user-invocable: true
-version: 1.1.0
+version: 1.3.0
 repo: https://github.com/bshakr/claude-skills
 skill_path: standup
 ---
@@ -59,6 +59,8 @@ Create a file at `~/.claude/weekly-goals.yaml` with your weekly goals:
 
 ```yaml
 week: "2026-04-14 / 2026-04-18"
+sprint_name: "Tom Bombadil"
+sprint_theme: "Lord of the Rings characters"
 goals:
   - description: "Implement user authentication flow"
     tickets:
@@ -74,6 +76,8 @@ goals:
 ```
 
 - `week`: the Monday/Friday date range for the current cycle
+- `sprint_name` (optional): the team's name for this sprint (e.g., a character, place, song). Used to fetch a themed quote/fact for the top of the standup.
+- `sprint_theme` (optional): the broader theme the name belongs to (e.g., "Lord of the Rings characters", "Studio Ghibli films"). Helps disambiguate when fetching quotes — e.g., "Frodo" the LOTR character vs. "Frodo" the dog.
 - `goals`: list of goals, each with:
   - `description` — short outcome statement
   - `tickets` — Linear issue IDs
@@ -102,6 +106,36 @@ Read the file `~/.claude/weekly-goals.yaml`.
 
 If the file is missing or stale, tell the user and stop.
 
+If `sprint_name` is missing from the YAML, ask the user before proceeding:
+
+> No sprint name set for this week. What's the sprint called? (and what's the theme — e.g., LOTR characters, Ghibli films?)
+
+Then update the YAML with `sprint_name` + `sprint_theme` before continuing.
+
+### 1b. Fetch a themed quote / fact
+
+If `sprint_name` is set, fetch a short quote, phrase, or fun fact tied to it. Use `WebSearch` (or `WebFetch` against a known canonical source) to get something accurate — do NOT make it up from training data, since names like "Tom Bombadil" have many associations and apocrypha.
+
+Search query pattern:
+- `"<sprint_name>" <sprint_theme> quote OR fact` — e.g., `"Tom Bombadil" Lord of the Rings quote`
+
+Pick one item:
+- A short direct quote (preferred — italicise + attribute), OR
+- A fun fact / piece of trivia (1 sentence, no source-citation noise), OR
+- A signature phrase the character/thing is known for
+
+Keep it under 2 lines. If the search returns nothing usable, fall back to a one-line description of the sprint name and move on — don't block the standup on this.
+
+Cache the chosen quote/fact in `~/.claude/skills/standup/.sprint-quote-cache.json` keyed by `sprint_name` so subsequent standups in the same sprint pull a *different* quote each day:
+
+```json
+{
+  "Tom Bombadil": ["quote 1 already used", "quote 2 already used"]
+}
+```
+
+On each invocation, exclude already-used quotes from the candidate set. When the cache for a sprint name has 5+ entries, reset it (start cycling again).
+
 ### 2. Query Linear for each goal's tickets
 
 For each goal, use `mcp__claude_ai_Linear__list_issues` (or `get_issue`) to fetch the status of every ticket listed under that goal.
@@ -128,10 +162,14 @@ Note: `--owner` should be inferred from the current repo (`gh repo view --json o
 
 For each goal, make a **judgment call** about whether the weekly goal will be completed by end of week (Friday). The status is NOT a mechanical roll-up of ticket states — it's a forecast:
 
-- :large_green_circle: **On track** — expected to hit the weekly outcome by Friday. Most tickets done, remaining work is straightforward and in progress.
-- :large_yellow_circle: **At risk** — might miss without help, scope change, or a decision. Examples: PR waiting on review for days, unclear requirements blocking progress, too much remaining work for the time left.
-- :red_circle: **Off track** — will miss unless the plan materially changes. Examples: committed work blocked with no workaround, key dependency not met, in-flight work derailed.
-- :white_circle: **Not started** — work hasn't begun yet but isn't off track. Use for stretch goals, deprioritised items, or work intentionally deferred. Distinct from `:red_circle:`, which is for committed work that's failing.
+- :white_check_mark: **Done** — goal shipped. All tickets complete, work merged. Use this instead of `:large_green_circle:` once a goal is fully delivered.
+- :large_green_circle: **On track** — expected to hit the weekly outcome by Friday. Remaining work is straightforward and in progress.
+- :large_yellow_circle: **At risk** — might miss without help, scope change, or a decision. Examples: PR waiting on review for days, unclear requirements, too much remaining work for the time left.
+- :large_orange_circle: **Delayed** — will bleed into next week. Work is moving but won't land Friday — typically because scope grew or the estimate was off. Not blocked, just slower than planned.
+- :red_circle: **Blocked** — completely blocked. Cannot progress until the blocker clears. Examples: committed work blocked with no workaround, key dependency not delivered, decision outstanding.
+- :white_circle: **Not started** — work hasn't begun yet but isn't blocked. Use for stretch goals, deprioritised items, or work intentionally deferred.
+
+**Orange vs red:** orange = moving, just late. Red = stopped, can't move. If you can describe progress this week, it's orange not red.
 
 Use the ticket statuses, PR states, day of the week, `effort`, `gated_by`, and any `notes` from the YAML to inform the judgment.
 
@@ -142,14 +180,14 @@ The user works with Claude Code, so code-writing is *fast*. Most missed estimate
 - **Code-writing bottleneck** (no `gated_by`, or `gated_by: none`):
   - `xsmall` / `small` remaining → green even with 1 day left
   - `medium` remaining → green with 2+ days left, yellow with 1 day
-  - `large` remaining → yellow with 3+ days, red with less
+  - `large` remaining → yellow with 3+ days, orange with less (will bleed into next week)
 - **Human-loop bottleneck** (`gated_by: review | design | external | decision`):
-  - PR open and review pending → status depends on review SLA, not code size. Yellow if waiting >24h, red if dependency not delivered.
-  - Design / decision pending → yellow if expected this week, red if not committed.
+  - PR open and review pending → status depends on review SLA, not code size. Yellow if waiting >24h, orange if reviewer unresponsive, red if dependency not delivered at all.
+  - Design / decision pending → yellow if expected this week, orange if slipping to next, red if not committed.
   - External dependency missing → red unless explicitly promised this week.
-- **Effort + gating combined**: a `small` goal `gated_by: review` with PR sitting 2 days = yellow despite tiny code surface. A `large` goal with no gating and Claude Code in flight = green if started.
+- **Effort + gating combined**: a `small` goal `gated_by: review` with PR sitting 2 days = yellow despite tiny code surface. A `large` goal with no gating and Claude Code in flight = green if started, orange if scope grew mid-week.
 
-Default to optimism on code volume, pessimism on human-loop time. When in doubt, name the *bottleneck* in the *Blockers:* line so the forecast is auditable.
+Default to optimism on code volume, pessimism on human-loop time. When in doubt, name the *bottleneck* in a `*Blockers:*` line so the forecast is auditable. If there are no blockers, omit the line entirely — don't write "Blockers: None".
 
 ### 5. Format the output (Slack-ready)
 
@@ -158,7 +196,7 @@ Present the standup in Slack mrkdwn format inside a single fenced code block so 
 Use Slack formatting rules:
 - `*bold*` for section headers (not markdown `**bold**`)
 - Bullet points with plain `-`
-- Use the actual emoji shortcodes: `:large_green_circle:`, `:large_yellow_circle:`, `:red_circle:`, `:white_circle:`
+- Use the actual emoji shortcodes: `:white_check_mark:`, `:large_green_circle:`, `:large_yellow_circle:`, `:large_orange_circle:`, `:red_circle:`, `:white_circle:`
 - IMPORTANT: The `<url|text>` mrkdwn link syntax does NOT work in Slack's composer (only via API). Do NOT include URLs.
 - IMPORTANT: Do NOT include Linear ticket IDs (e.g., PROJ-1234) — they trigger the Linear bot to spam the Slack thread. Use summarised ticket titles instead.
 
@@ -167,59 +205,68 @@ Use Slack formatting rules:
 Each ticket is one line using its **summarised title** (short, no ID). If the ticket has an open PR that's relevant (needs review, blocking), append it inline:
 
 ```
-- Extract Staffology pay lines (BE) — `Done` :white_check_mark:
 - Employee Portal bank details lock (FE) — `In Progress`, PR needs review
 - Audit trail frontend page — `In Progress`
 ```
 
 Rules for ticket lines:
 - Summarise the ticket title to be short and clear — strip prefixes like `[FE]`, `[BE]`, `[MW]` and use parenthetical tags instead: `(FE)`, `(BE)`, `(MW)`
-- Append `:white_check_mark:` after `Done` tickets
 - If the ticket has an open PR that needs action, append: `, PR needs review` or `, PR open`
 - If the ticket has multiple PRs, only mention the most relevant one (usually the open one)
 - Don't mention merged PRs unless the ticket is still in progress (indicates partial work)
-- For goals where all tickets are `Done`, skip individual ticket lines — just say "All tickets complete"
+- For done goals (`:white_check_mark:`), skip ticket lines entirely — the checkmark already says "shipped"
 
 #### Overall structure
 
+Each goal is a status emoji + bold goal description, followed by 0–N short bullets describing in-flight work or context, and an optional `*Blockers:*` line. **Do not include a `*Today:*` label** — bullets stand alone under the goal heading. **Only include `*Blockers:*` when there is an actual blocker** — omit the line entirely otherwise.
+
+The standup opens with a sprint header line (if `sprint_name` is set) — sprint name + themed quote/fact on a separate line, italicised. Then a blank line, then the weekly goals header.
+
 ```
+*Sprint: {sprint_name}*
+_"{quote or fact}"_ — {attribution if quote}
+
 *Weekly Goals — {week date}*
 
-:large_green_circle: *Goal description*
-*Today:*
-- All tickets complete
-*Blockers:* None
+:white_check_mark: *Shipped goal description*
 
-:large_yellow_circle: *Goal description*
-*Today:*
+:large_green_circle: *On-track goal description*
+- PR approved, merging today
+
+:large_yellow_circle: *At-risk goal description*
 - Working on audit trail frontend page
 - Next up: CSV export and feature flag
 *Blockers:* Tight on time — 2 tickets remaining with 3 days left
 
-:red_circle: *Goal description*
-*Today:*
-- Blocked on backend API — escalating to unblock today
-*Blockers:* Backend dependency not delivered, will miss unless scope dropped
+:large_orange_circle: *Delayed goal description*
+- Scope grew beyond initial estimate, will bleed into next week
+- Finalising plan + sub-ticket breakdown across BE/MW/FE
+- Picking up first BE sub-ticket
+
+:red_circle: *Blocked goal description*
+- Backend API not delivered — escalating to unblock today
+*Blockers:* Waiting on platform team, no ETA
 
 :white_circle: *Stretch goal description*
-*Today:*
-- Not started — will pick up if primary goals land early
-*Blockers:* None — capacity-dependent
+- Picking this up today
 ```
 
 Rules:
 - One section per goal, prefixed with its status emoji
-- *Today:* — 1-3 bullets describing what will be worked on today, inferred from in-progress/to-do tickets and open PRs. Use natural language, not ticket titles.
-- *Blockers:* — `None` if clear, otherwise name the blocker, who can unblock it, and any PRs needing review. Don't be shy about naming people.
-- Under *Today:*, optionally include ticket status lines for goals that are partially complete (mix of done and in-progress). Skip them for fully done or fully not-started goals.
-- Keep it concise — the whole standup should be scannable in 30 seconds
+- For `:white_check_mark:` goals, no bullets needed — the checkmark conveys completion
+- Bullets describe what's in flight or what's next — use natural language, not ticket titles
+- For partially complete goals, ticket status lines are optional context bullets
+- `*Blockers:*` only appears when there is one — never write "Blockers: None"
+- Keep it concise — whole standup should be scannable in 30 seconds
 
 Legend (include at the bottom):
 
 ```
+:white_check_mark: Done — shipped this week
 :large_green_circle: On track — expected to hit weekly outcome
 :large_yellow_circle: At risk — might miss without help/scope change/decision
-:red_circle: Off track — will miss unless plan materially changes
+:large_orange_circle: Delayed — bleeding into next week, not blocked
+:red_circle: Blocked — cannot progress until blocker clears
 :white_circle: Not started — stretch / deferred / not yet picked up
 ```
 
@@ -227,5 +274,7 @@ Legend (include at the bottom):
 
 If the user asks to "update goals" or "set this week's goals", help them edit `~/.claude/weekly-goals.yaml`:
 - Ask them to provide the new goals
+- **Ask for the sprint name and theme for this cycle** if not provided (e.g., "Sprint name? Theme?")
 - Help map each goal to the relevant Linear ticket IDs (search Linear if needed)
 - Write the updated YAML file
+- If `sprint_name` changed from the previous cycle, drop or reset the entry for the old name in `.sprint-quote-cache.json`
