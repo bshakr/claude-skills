@@ -2,7 +2,7 @@
 name: standup
 description: Generate a daily standup status report against weekly goals, cross-referencing Linear tickets and GitHub PRs, formatted for Slack.
 user-invocable: true
-version: 1.3.0
+version: 1.4.0
 repo: https://github.com/bshakr/claude-skills
 skill_path: standup
 ---
@@ -116,25 +116,65 @@ Then update the YAML with `sprint_name` + `sprint_theme` before continuing.
 
 If `sprint_name` is set, fetch a short quote, phrase, or fun fact tied to it. Use `WebSearch` (or `WebFetch` against a known canonical source) to get something accurate — do NOT make it up from training data, since names like "Tom Bombadil" have many associations and apocrypha.
 
-Search query pattern:
-- `"<sprint_name>" <sprint_theme> quote OR fact` — e.g., `"Tom Bombadil" Lord of the Rings quote`
+#### Quality bar — this is the whole point
 
-Pick one item:
-- A short direct quote (preferred — italicise + attribute), OR
-- A fun fact / piece of trivia (1 sentence, no source-citation noise), OR
-- A signature phrase the character/thing is known for
+Optimise for **remarkable, funny, interesting, or iconic**. The standup should feel fun, not like trivia filler. Reject the first plausible result if it doesn't clear the bar.
 
-Keep it under 2 lines. If the search returns nothing usable, fall back to a one-line description of the sprint name and move on — don't block the standup on this.
+**Good** (use these):
+- Iconic lines the audience recognises ("One does not simply walk into Mordor.")
+- Genuinely funny or absurd quotes (Tom Bombadil singing nonsense rhymes)
+- Surprising trivia (Tolkien deliberately left Bombadil's nature unexplained — even *he* didn't decide what Tom was)
+- Signature catchphrases the character is famous for
 
-Cache the chosen quote/fact in `~/.claude/skills/standup/.sprint-quote-cache.json` keyed by `sprint_name` so subsequent standups in the same sprint pull a *different* quote each day:
+**Bad** (skip these):
+- Generic descriptive sentences pulled from a wiki summary
+- Quotes that need 3+ lines of context to land
+- Bland exposition the audience won't recognise as belonging to the theme
+- Anything you'd describe as "fine, I guess"
+
+#### Process
+
+1. **Cast a wide net.** Run at least 2 distinct searches to surface a candidate pool:
+   - `"<sprint_name>" <sprint_theme> iconic quotes`
+   - `"<sprint_name>" famous lines` OR `"<sprint_name>" funny quotes` OR `"<sprint_name>" trivia`
+2. **Generate a shortlist of 5 candidates** internally. Mix quotes, trivia, and signature phrases — don't pull all from the same axis.
+3. **Score each against the quality bar.** Drop anything bland.
+4. **Present 3–5 options to the user the FIRST time a sprint name is used** (or whenever the user says "more options" / "give me alternatives"). Format:
+   ```
+   1. _"quote"_ — attribution
+   2. Fun fact: ...
+   3. ...
+   ```
+   Then ask: "Which one (or want more)?"
+5. **On subsequent days**, pick the next-best candidate that hasn't been used yet — no need to re-prompt unless asked.
+
+Keep each item under 2 lines. If search returns nothing usable, fall back to a one-line description of the sprint name and move on — don't block the standup on this.
+
+#### Cache
+
+Cache picked + rejected quotes in `~/.claude/skills/standup/.sprint-quote-cache.json` keyed by `sprint_name`:
 
 ```json
 {
-  "Tom Bombadil": ["quote 1 already used", "quote 2 already used"]
+  "Tom Bombadil": {
+    "candidates": [
+      "pre-approved quote 1",
+      "pre-approved quote 2",
+      "pre-approved quote 3"
+    ],
+    "used": ["quote 1 already shown"],
+    "rejected": ["bland quote user passed on"]
+  }
 }
 ```
 
-On each invocation, exclude already-used quotes from the candidate set. When the cache for a sprint name has 5+ entries, reset it (start cycling again).
+- `candidates` — pre-approved pool. When the user says "save these for next week" or accepts a shortlist, store the full shortlist here. Subsequent daily standups draw from this pool first (oldest unused first) before doing a fresh web search.
+- `used` — quotes already shown in this sprint. Cycle when 5+ entries.
+- `rejected` — quotes the user passed on. Never show again for the lifetime of the sprint.
+
+Selection order on each daily run:
+1. If `candidates` non-empty — pick the first one not in `used` or `rejected`, move it to `used`.
+2. Else web-search fresh.
 
 ### 2. Query Linear for each goal's tickets
 
