@@ -9,6 +9,7 @@ Personal collection of [Claude Code skills](https://docs.claude.com/en/docs/clau
 | [`standup`](./standup) | 1.3.0 | Generate a daily standup report against weekly goals, cross-referencing Linear tickets and GitHub PRs, formatted for Slack. Supports sprint-themed quotes/facts at the top. |
 | [`pr-comments`](./pr-comments) | 1.1.0 | Resolve PR review comments end-to-end — fetch, evaluate validity, fix valid ones, commit, push, and draft replies for approval. |
 | [`ship-ticket`](./ship-ticket) | 1.0.0 | Ship a Linear ticket end-to-end — worktree off latest main, planned TDD, mandatory `/review`, PR with traceable review SHA. |
+| [`test-plan-builder`](./test-plan-builder) | 1.0.0 | Build a code-grounded, multi-tab QA test plan for a feature spanning one or more repos — fans out parallel research subagents per repo/layer, reconciles what's actually implemented vs the spec, and outputs a formatted spreadsheet. |
 
 ## Install
 
@@ -21,6 +22,7 @@ mkdir -p ~/.claude/skills
 ln -s ~/code/claude-skills/standup ~/.claude/skills/standup
 ln -s ~/code/claude-skills/pr-comments ~/.claude/skills/pr-comments
 ln -s ~/code/claude-skills/ship-ticket ~/.claude/skills/ship-ticket
+ln -s ~/code/claude-skills/test-plan-builder ~/.claude/skills/test-plan-builder
 ```
 
 Symlinks mean `git pull` instantly updates the live skill. Restart your Claude Code session afterwards so the skill index reloads.
