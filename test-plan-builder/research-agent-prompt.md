@@ -15,7 +15,7 @@ The repo is now FULLY UP TO DATE with its default branch (production-candidate).
 
 CONSTRAINTS:
 - READ-ONLY research + analysis. Do NOT modify files.
-- Do NOT run tests / the dev server. <State any repo-specific guard, e.g. "NEVER run the full test suite — it spins up heavy containers.">
+- Do NOT run tests.
 - Use ripgrep + direct file reads. Search for: <key symbols, routes, component names, table names>.
 
 DELIVERABLE: a comprehensive list of concrete test scenarios grounded in the ACTUAL implemented code. For EACH scenario give these labeled fields:
