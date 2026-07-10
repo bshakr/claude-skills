@@ -3,7 +3,7 @@ name: pr-comments
 description: Resolve PR review comments end-to-end — fetch comments, evaluate validity against the codebase, fix valid ones in code, commit + push, then draft replies for each comment and wait for user approval before posting. Use when the user wants to address review feedback on a PR.
 user-invocable: true
 argument-hint: "<pr-number-or-url>"
-version: 1.1.0
+version: 1.2.0
 repo: https://github.com/bshakr/claude-skills
 skill_path: pr-comments
 ---
@@ -58,10 +58,12 @@ If the output is `UP_TO_DATE` or `SKIP_CHECK`, proceed silently to Step 1.
 ### 1. Fetch all review comments
 
 ```
-gh api repos/{owner}/{repo}/pulls/{pr}/comments --jq '.[] | "---\nID: \(.id)\nFILE: \(.path):\(.original_line // .line)\nBODY: \(.body)\n"'
+gh api repos/{owner}/{repo}/pulls/{pr}/comments --jq '.[] | "---\nID: \(.id)\nFILE: \(.path):\(.original_line // .line)\nHUNK: \(.diff_hunk)\nBODY: \(.body)\n"'
 ```
 
 If the PR is provided as a URL, extract the owner/repo/number from it. If only a number is given, use the current repo.
+
+`HUNK` is the `diff_hunk` the comment is anchored to. It can be long — when presenting it in Step 6, trim to the final ~6 lines so the anchored line stays visible.
 
 ### 2. Evaluate each comment
 
@@ -96,15 +98,22 @@ For each comment assessed as valid:
 
 ### 6. Draft replies and wait for approval
 
-Present ALL draft replies (for both valid and invalid comments) to the user in a single message. Format each reply clearly:
+Present ALL draft replies (for both valid and invalid comments) to the user in a single message, each with its code context so the user can review without opening GitHub. Format each draft like this:
 
-```
-Comment #N (FILE:LINE) — [FIXED / NOT FIXING]
-> [brief summary of the comment]
+````
+### Comment #N — `FILE:LINE` (PR #123) — [FIXED in `abc1234` / NOT FIXING / OBSOLETE]
 
-Draft reply:
-[the reply text]
+```lang
+<the anchored code hunk from the comment's HUNK (diff_hunk) field, trimmed to
+the last ~6 lines so the anchor line is visible; fence with the file's language>
 ```
+
+**Comment** (author, severity if present): one-sentence summary of what the comment asks.
+
+**Draft reply:** the reply text.
+````
+
+When more than one PR is in scope, group the drafts under a heading per PR.
 
 **Do NOT post any replies until the user explicitly approves.** The user may want to edit the wording or change the assessment.
 
