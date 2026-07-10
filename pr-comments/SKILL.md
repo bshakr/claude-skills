@@ -3,7 +3,7 @@ name: pr-comments
 description: Resolve PR review comments end-to-end — fetch comments, evaluate validity against the codebase, fix valid ones in code, commit + push, then draft replies for each comment and wait for user approval before posting. Use when the user wants to address review feedback on a PR.
 user-invocable: true
 argument-hint: "<pr-number-or-url>"
-version: 1.2.0
+version: 1.3.0
 repo: https://github.com/bshakr/claude-skills
 skill_path: pr-comments
 ---
@@ -98,22 +98,49 @@ For each comment assessed as valid:
 
 ### 6. Draft replies and wait for approval
 
-Present ALL draft replies (for both valid and invalid comments) to the user in a single message, each with its code context so the user can review without opening GitHub. Format each draft like this:
+Present ALL draft replies (for both valid and invalid comments) in a single message, grouped by PR, with enough code context that the user can review without opening GitHub.
 
-````
-### Comment #N — `FILE:LINE` (PR #123) — [FIXED in `abc1234` / NOT FIXING / OBSOLETE]
+The user reads these in a Claude Code terminal, where markdown renders. Tables and fenced code blocks render as distinct visual units; bare label lines (`**Comment:** ...`) run together into an undifferentiated wall. So the presentation has **two layers**: a scan table that renders as one grid, and one card per comment where every element is separated by a blank line.
 
-```lang
-<the anchored code hunk from the comment's HUNK (diff_hunk) field, trimmed to
-the last ~6 lines so the anchor line is visible; fence with the file's language>
+**Layer 1 — scan table, one per PR.** Lets the user triage before reading any detail:
+
+```markdown
+## PR #123 — <title or repo short name>
+
+| # | File | Ask | Verdict |
+|---|------|-----|---------|
+| 1 | `path/file.py:86` | align doc INSERT with migration | ✅ fixed `abc1234` |
+| 2 | `schemas.py:95` | integ-test the new field | ✅ in #8356 |
+| 3 | `hooks.ts:26` | endpoint 404s | ❌ not fixing — false positive |
 ```
 
-**Comment** (author, severity if present): one-sentence summary of what the comment asks.
+The **Ask** column is ≤6 words.
 
-**Draft reply:** the reply text.
+**Layer 2 — one card per comment.** Put a blank line between every element (heading, hunk, comment line, reply block) so the blocks don't hug:
+
+````markdown
+### 1 · `path/file.py:86` — ✅ FIXED in `abc1234`
+
+```python
+<diff_hunk trimmed to final ~6 lines>
+```
+
+**Comment** — author (severity): one-sentence summary of the ask.
+
+**Draft reply:**
+
+```text
+The reply text exactly as it will be posted.
+```
 ````
 
-When more than one PR is in scope, group the drafts under a heading per PR.
+Rules:
+- **Draft replies ALWAYS go in their own fenced ` ```text ` block** — never inline prose, never markdown blockquotes (`>`), which render as a low-contrast highlight in the user's terminal theme.
+- Blank line between the heading, the hunk, the comment line, and the reply block — no hugging lines.
+- Trim the `diff_hunk` to the final ~6 lines so the anchored line stays visible; fence it with the file's language.
+- **Verdict vocabulary** (use in both the table and the card heading): ✅ FIXED in `sha` / ✅ ADDRESSED IN #<pr> / 🟡 PARTIALLY FIXED in `sha` / ❌ NOT FIXING (reason) / ⬜ OBSOLETE.
+- All drafts in ONE message, grouped by PR. Nothing is posted before explicit approval.
+- End with a one-line tally (e.g. `13 fixed · 3 addressed upstack · 2 not fixing · 1 obsolete`) followed by the approval ask.
 
 **Do NOT post any replies until the user explicitly approves.** The user may want to edit the wording or change the assessment.
 
