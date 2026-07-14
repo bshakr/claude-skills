@@ -3,7 +3,7 @@ name: pr-comments
 description: Resolve PR review comments end-to-end — fetch comments, evaluate validity against the codebase, fix valid ones in code, commit + push, then draft replies for each comment and wait for user approval before posting. Use when the user wants to address review feedback on a PR.
 user-invocable: true
 argument-hint: "<pr-number-or-url>"
-version: 1.1.0
+version: 1.4.0
 repo: https://github.com/bshakr/claude-skills
 skill_path: pr-comments
 ---
@@ -58,10 +58,12 @@ If the output is `UP_TO_DATE` or `SKIP_CHECK`, proceed silently to Step 1.
 ### 1. Fetch all review comments
 
 ```
-gh api repos/{owner}/{repo}/pulls/{pr}/comments --jq '.[] | "---\nID: \(.id)\nFILE: \(.path):\(.original_line // .line)\nBODY: \(.body)\n"'
+gh api repos/{owner}/{repo}/pulls/{pr}/comments --jq '.[] | "---\nID: \(.id)\nFILE: \(.path):\(.original_line // .line)\nHUNK: \(.diff_hunk)\nBODY: \(.body)\n"'
 ```
 
 If the PR is provided as a URL, extract the owner/repo/number from it. If only a number is given, use the current repo.
+
+`HUNK` is the `diff_hunk` the comment is anchored to. It can be long — when presenting it in Step 6, trim to the final ~6 lines so the anchored line stays visible.
 
 ### 2. Evaluate each comment
 
@@ -96,15 +98,53 @@ For each comment assessed as valid:
 
 ### 6. Draft replies and wait for approval
 
-Present ALL draft replies (for both valid and invalid comments) to the user in a single message. Format each reply clearly:
+Present ALL draft replies (for both valid and invalid comments) in a single message, grouped by PR, with enough code context that the user can review without opening GitHub.
 
-```
-Comment #N (FILE:LINE) — [FIXED / NOT FIXING]
-> [brief summary of the comment]
+The user reads these in a Claude Code terminal, where markdown renders. Tables and fenced code blocks render as distinct visual units; bare label lines (`**Comment:** ...`) run together into an undifferentiated wall. So the presentation has **two layers**: a scan table that renders as one grid, and one card per comment where every element is separated by a blank line.
 
-Draft reply:
-[the reply text]
+**Layer 1 — scan table, one per PR.** Lets the user triage before reading any detail:
+
+```markdown
+## PR #123 — <title or repo short name>
+
+| # | File | Ask | Verdict |
+|---|------|-----|---------|
+| 1 | `path/file.py:86` | align doc INSERT with migration | ✅ fixed `abc1234` |
+| 2 | `schemas.py:95` | integ-test the new field | ✅ in #8356 |
+| 3 | `hooks.ts:26` | endpoint 404s | ❌ not fixing — false positive |
 ```
+
+The **Ask** column is ≤6 words.
+
+**Layer 2 — one card per comment.** Each card is framed by heavy horizontal rules (`━`) with the title embedded in the TOP rule. There are no side borders, so nothing needs padding or alignment and it renders cleanly at any terminal width ≥ the rule length:
+
+````markdown
+━━ 1 · `path/file.py:86` — ✅ FIXED in `abc1234` ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+```python
+<diff_hunk trimmed to final ~6 lines>
+```
+
+**COMMENT** — author (severity): one-sentence summary of the ask.
+
+**REPLY**
+
+```text
+The reply text exactly as it will be posted.
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+````
+
+Rules:
+- **Top rule:** `━━ <n> · <file:line> — <verdict> ` then fill with `━` to ~110 chars total. **Bottom rule:** ~110 `━` chars. Blank line before and after each rule so markdown doesn't merge lines.
+- **No side borders** — content between the rules is normal markdown, so code hunks keep syntax highlighting and text wraps naturally at any terminal width.
+- Both rules are plain text lines OUTSIDE code fences.
+- **Code hunk:** fenced with the file's language, trimmed to the final ~6 lines of `diff_hunk`. Omit the fence entirely when the comment anchors to a whole file (line 1) with no meaningful hunk.
+- **REPLY always in its own fenced ` ```text ` block** — never inline prose, never markdown blockquotes (`>`), which render as a low-contrast highlight in the user's terminal theme.
+- **Verdict vocabulary** (use in both the table and the card title): ✅ FIXED in `sha` / ✅ ADDRESSED IN #<pr> / 🟡 PARTIALLY FIXED in `sha` / ❌ NOT FIXING (reason) / ⬜ OBSOLETE.
+- All drafts in ONE message, grouped by PR: scan table first, then that PR's cards. Nothing is posted before explicit approval.
+- End with a one-line tally (e.g. `13 fixed · 3 addressed upstack · 2 not fixing · 1 obsolete`) followed by the approval ask.
 
 **Do NOT post any replies until the user explicitly approves.** The user may want to edit the wording or change the assessment.
 
