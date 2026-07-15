@@ -30,17 +30,31 @@ type Point = {
   y: number;
 };
 
+type LabelLine = {
+  text: string;
+  width: number;
+};
+
 type VerticalScale = {
   position: (value: number) => number;
   zero: number;
+};
+
+type VerticalLayout = {
+  extraHeight: number;
+  labelY: number;
+  plotBottom: number;
+  plotTop: number;
 };
 
 const plotTop = 44;
 const plotBottom = 330;
 const chartLabelY = 358;
 const chartLabelLineHeight = 15;
-const chartLabelMaxLength = 18;
 const chartLabelMaxLines = 4;
+const legendColumnWidth = 126;
+const legendRowHeight = 24;
+const legendMaxColumns = 4;
 
 function chartId(kind: string, spec: ChartSpec): string {
   return `${kind}-${spec.id}`;
@@ -61,6 +75,27 @@ function pointSeries(point: ChartPoint): string {
 
 function seriesNames(points: ChartPoint[]): string[] {
   return [...new Set(points.map(pointSeries))];
+}
+
+function legendColumns(width: number): number {
+  return Math.max(
+    1,
+    Math.min(legendMaxColumns, Math.floor((width - 64) / legendColumnWidth)),
+  );
+}
+
+function legendRows(series: string[], width: number): number {
+  return Math.ceil(series.length / legendColumns(width));
+}
+
+function verticalLayout(series: string[], width: number): VerticalLayout {
+  const extraHeight = (legendRows(series, width) - 1) * legendRowHeight;
+  return {
+    extraHeight,
+    labelY: chartLabelY + extraHeight,
+    plotBottom: plotBottom + extraHeight,
+    plotTop: plotTop + extraHeight,
+  };
 }
 
 function labelNames(points: ChartPoint[]): string[] {
@@ -229,24 +264,47 @@ function SeriesLegend({
   series: string[];
   width: number;
 }) {
-  const startX = Math.max(78, width - series.length * 126);
+  const columnCount = legendColumns(width);
+  const rowCount = legendRows(series, width);
 
   return (
-    <g aria-label="Series legend" className="quant-chart__legend" role="list">
-      {series.map((name, index) => (
-        <g key={name} role="listitem" transform={`translate(${startX + index * 126} 18)`}>
-          <rect
-            fill={`url(#${patternId(domId, index)})`}
-            height="14"
-            width="18"
-            x="0"
-            y="-11"
-          />
-          <text x="25" y="0">
-            {name}
-          </text>
-        </g>
-      ))}
+    <g
+      aria-label="Series legend"
+      className="quant-chart__legend"
+      data-legend-rows={rowCount}
+      role="list"
+    >
+      {series.map((name, index) => {
+        const row = Math.floor(index / columnCount);
+        const column = index % columnCount;
+        const rowLength = Math.min(
+          columnCount,
+          series.length - row * columnCount,
+        );
+        const startX = (width - rowLength * legendColumnWidth) / 2;
+        const x = startX + column * legendColumnWidth;
+        const y = 18 + row * legendRowHeight;
+        return (
+          <g
+            data-legend-column={column}
+            data-legend-row={row}
+            key={name}
+            role="listitem"
+            transform={`translate(${x} ${y})`}
+          >
+            <rect
+              fill={`url(#${patternId(domId, index)})`}
+              height="14"
+              width="18"
+              x="0"
+              y="-11"
+            />
+            <text x="25" y="0">
+              {name}
+            </text>
+          </g>
+        );
+      })}
     </g>
   );
 }
@@ -302,34 +360,81 @@ function ChartFrame({
   );
 }
 
-function labelLines(label: string): string[] {
-  const segments = label
-    .trim()
-    .split(/\s+/)
-    .flatMap((word) => {
-      const characters = Array.from(word);
-      return Array.from(
-        { length: Math.ceil(characters.length / chartLabelMaxLength) },
-        (_, index) =>
-          characters
-            .slice(
-              index * chartLabelMaxLength,
-              (index + 1) * chartLabelMaxLength,
-            )
-            .join(""),
-      );
-    });
-  const lines: string[] = [];
+function estimatedGlyphWidth(character: string): number {
+  const codePoint = character.codePointAt(0) ?? 0;
+  if (/\s/.test(character)) {
+    return 4;
+  }
+  if (codePoint > 0xff) {
+    return 13;
+  }
+  if (/[WM@%&QO]/.test(character)) {
+    return 10;
+  }
+  if (/[ilI1.,:;!'|]/.test(character)) {
+    return 4;
+  }
+  if (/[A-Z0-9]/.test(character)) {
+    return 8;
+  }
+  return 7;
+}
 
-  for (const segment of segments) {
-    const lastLine = lines.at(-1);
-    if (
-      !lastLine ||
-      `${lastLine} ${segment}`.length > chartLabelMaxLength
-    ) {
-      lines.push(segment);
+function estimatedTextWidth(value: string): number {
+  return Array.from(value).reduce(
+    (width, character) => width + estimatedGlyphWidth(character),
+    0,
+  );
+}
+
+function preferredLabelSlotWidth(labels: string[], minimum: number): number {
+  const widestLabel = Math.max(...labels.map(estimatedTextWidth));
+  return Math.min(
+    360,
+    Math.max(minimum, Math.ceil(widestLabel / chartLabelMaxLines) + 24),
+  );
+}
+
+function splitLabelWord(word: string, availableWidth: number): LabelLine[] {
+  const chunks: LabelLine[] = [];
+  let text = "";
+  let width = 0;
+
+  for (const character of Array.from(word)) {
+    const characterWidth = estimatedGlyphWidth(character);
+    if (text && width + characterWidth > availableWidth) {
+      chunks.push({ text, width });
+      text = character;
+      width = characterWidth;
     } else {
-      lines[lines.length - 1] = `${lastLine} ${segment}`;
+      text += character;
+      width += characterWidth;
+    }
+  }
+  if (text) {
+    chunks.push({ text, width });
+  }
+  return chunks;
+}
+
+function labelLines(label: string, availableWidth: number): LabelLine[] {
+  const lines: LabelLine[] = [];
+
+  for (const word of label.trim().split(/\s+/)) {
+    const wordWidth = estimatedTextWidth(word);
+    const lastLine = lines.at(-1);
+    const combinedText = lastLine ? `${lastLine.text} ${word}` : word;
+    const combinedWidth = estimatedTextWidth(combinedText);
+
+    if (wordWidth > availableWidth) {
+      lines.push(...splitLabelWord(word, availableWidth));
+    } else if (lastLine && combinedWidth <= availableWidth) {
+      lines[lines.length - 1] = {
+        text: combinedText,
+        width: combinedWidth,
+      };
+    } else {
+      lines.push({ text: word, width: wordWidth });
     }
   }
 
@@ -339,50 +444,85 @@ function labelLines(label: string): string[] {
 
   const visibleLines = lines.slice(0, chartLabelMaxLines);
   const finalLine = visibleLines[chartLabelMaxLines - 1];
-  visibleLines[chartLabelMaxLines - 1] =
-    `${finalLine.slice(0, chartLabelMaxLength - 1)}…`;
+  const finalCharacters = Array.from(finalLine.text);
+  while (
+    finalCharacters.length > 0 &&
+    estimatedTextWidth(`${finalCharacters.join("")}…`) > availableWidth
+  ) {
+    finalCharacters.pop();
+  }
+  const finalText = `${finalCharacters.join("")}…`;
+  visibleLines[chartLabelMaxLines - 1] = {
+    text: finalText,
+    width: estimatedTextWidth(finalText),
+  };
   return visibleLines;
 }
 
-function chartHeight(labels: string[], includeSeriesLabels = false): number {
-  const lineCount = Math.max(...labels.map((label) => labelLines(label).length));
-  const lastLineY = chartLabelY + (lineCount - 1) * chartLabelLineHeight;
-  return Math.max(430, lastLineY + (includeSeriesLabels ? 50 : 32));
+function chartHeight(
+  labels: string[],
+  availableLabelWidth: number,
+  layout: VerticalLayout,
+  includeSeriesLabels = false,
+): number {
+  const lineCount = Math.max(
+    ...labels.map(
+      (label) => labelLines(label, availableLabelWidth).length,
+    ),
+  );
+  const lastLineY =
+    layout.labelY + (lineCount - 1) * chartLabelLineHeight;
+  return Math.max(
+    430 + layout.extraHeight,
+    lastLineY + (includeSeriesLabels ? 50 : 32),
+  );
 }
 
-function seriesLabelY(label: string): number {
+function seriesLabelY(
+  label: string,
+  availableLabelWidth: number,
+  labelY: number,
+): number {
   return (
-    chartLabelY +
-    (labelLines(label).length - 1) * chartLabelLineHeight +
+    labelY +
+    (labelLines(label, availableLabelWidth).length - 1) *
+      chartLabelLineHeight +
     20
   );
 }
 
 function SvgLabel({
+  availableWidth,
   className = "quant-chart__label",
   label,
   x,
   y,
-}: Point & { className?: string; label: string }) {
-  const lines = labelLines(label);
+}: Point & { availableWidth: number; className?: string; label: string }) {
+  const lines = labelLines(label, availableWidth);
+  const estimatedWidth = Math.max(...lines.map(({ width }) => width));
 
   return (
     <text
       aria-label={label}
       className={className}
       data-chart-label={label}
+      data-label-available-width={rounded(availableWidth)}
+      data-label-estimated-width={rounded(estimatedWidth)}
+      data-label-left={rounded(x - estimatedWidth / 2)}
       data-label-lines={lines.length}
+      data-label-right={rounded(x + estimatedWidth / 2)}
       textAnchor="middle"
       x={x}
       y={y}
     >
       {lines.map((line, index) => (
         <tspan
+          data-estimated-width={rounded(line.width)}
           dy={index === 0 ? 0 : chartLabelLineHeight}
-          key={`${line}-${index}`}
+          key={`${line.text}-${index}`}
           x={x}
         >
-          {line}
+          {line.text}
         </tspan>
       ))}
     </text>
@@ -414,13 +554,18 @@ export function BarChart({ spec, sourceNodes }: ChartProps) {
     return null;
   }
 
-  const width = Math.max(760, spec.points.length * 126 + 110);
-  const height = chartHeight(
-    spec.points.map(({ label }) => label),
-    true,
-  );
+  const labels = spec.points.map(({ label }) => label);
+  const labelSlotWidth = preferredLabelSlotWidth(labels, 126);
+  const availableLabelWidth = labelSlotWidth - 20;
+  const width = Math.max(760, spec.points.length * labelSlotWidth + 110);
   const series = seriesNames(spec.points);
-  const scale = verticalScale(spec.points.map(({ value }) => value));
+  const layout = verticalLayout(series, width);
+  const height = chartHeight(labels, availableLabelWidth, layout, true);
+  const scale = verticalScale(
+    spec.points.map(({ value }) => value),
+    layout.plotTop,
+    layout.plotBottom,
+  );
   const plotWidth = width - 110;
   const slotWidth = plotWidth / spec.points.length;
   const barWidth = Math.min(66, slotWidth * 0.58);
@@ -471,13 +616,22 @@ export function BarChart({ spec, sourceNodes }: ChartProps) {
             >
               {valueLiteral(point.value)} {point.unit}
             </text>
-            <SvgLabel label={point.label} x={centerX} y={chartLabelY} />
+            <SvgLabel
+              availableWidth={availableLabelWidth}
+              label={point.label}
+              x={centerX}
+              y={layout.labelY}
+            />
             <text
               className="quant-chart__series-label"
               data-series-label-for={index}
               textAnchor="middle"
               x={centerX}
-              y={seriesLabelY(point.label)}
+              y={seriesLabelY(
+                point.label,
+                availableLabelWidth,
+                layout.labelY,
+              )}
             >
               {pointSeries(point)}
             </text>
@@ -497,15 +651,20 @@ export function LineChart({ spec, sourceNodes }: ChartProps) {
 
   const labels = labelNames(spec.points);
   const series = seriesNames(spec.points);
-  const width = Math.max(760, labels.length * 210 + 120);
-  const height = chartHeight(labels);
-  const scale = verticalScale(spec.points.map(({ value }) => value));
+  const labelSlotWidth = preferredLabelSlotWidth(labels, 210);
+  const availableLabelWidth = labelSlotWidth - 20;
+  const width = Math.max(760, labels.length * labelSlotWidth + 120);
+  const layout = verticalLayout(series, width);
+  const height = chartHeight(labels, availableLabelWidth, layout);
+  const scale = verticalScale(
+    spec.points.map(({ value }) => value),
+    layout.plotTop,
+    layout.plotBottom,
+  );
+  const categorySlotWidth = (width - 120) / labels.length;
   const labelX = (label: string) => {
     const index = labels.indexOf(label);
-    if (labels.length === 1) {
-      return width / 2;
-    }
-    return rounded(82 + (index * (width - 164)) / (labels.length - 1));
+    return rounded(60 + (index + 0.5) * categorySlotWidth);
   };
 
   return (
@@ -534,9 +693,23 @@ export function LineChart({ spec, sourceNodes }: ChartProps) {
         );
       })}
       {spec.points.map((point, index) => {
-        const x = labelX(point.label);
-        const y = scale.position(point.value);
+        const baseX = labelX(point.label);
+        const baseY = scale.position(point.value);
         const seriesIndex = series.indexOf(pointSeries(point));
+        const peers = spec.points.filter(
+          (candidate) =>
+            candidate.label === point.label &&
+            Object.is(candidate.value, point.value),
+        );
+        const peerIndex = peers.indexOf(point);
+        const centeredIndex = peerIndex - (peers.length - 1) / 2;
+        const markerX = rounded(baseX + centeredIndex * 14);
+        const labelXPosition = rounded(baseX + centeredIndex * 64);
+        const labelY = rounded(
+          baseY <= (layout.plotTop + layout.plotBottom) / 2
+            ? baseY + 38
+            : baseY - 28,
+        );
         return (
           <a
             aria-label={pointAriaLabel(point)}
@@ -544,10 +717,18 @@ export function LineChart({ spec, sourceNodes }: ChartProps) {
             href={sourceHref(point.source)}
             key={`${point.label}-${pointSeries(point)}-${index}`}
           >
+            <line
+              className="quant-chart__leader"
+              data-series-leader-for={index}
+              x1={markerX}
+              x2={labelXPosition}
+              y1={baseY}
+              y2={rounded(labelY - 4)}
+            />
             <circle
               className="quant-chart__line-point"
-              cx={x}
-              cy={y}
+              cx={markerX}
+              cy={baseY}
               data-chart-point={index}
               data-line-point="true"
               data-value={valueLiteral(point.value)}
@@ -557,8 +738,8 @@ export function LineChart({ spec, sourceNodes }: ChartProps) {
             <text
               className="quant-chart__value"
               textAnchor="middle"
-              x={x}
-              y={rounded(y - 12 - seriesIndex * 15)}
+              x={labelXPosition}
+              y={rounded(labelY + 15)}
             >
               {valueLiteral(point.value)} {point.unit}
             </text>
@@ -566,8 +747,8 @@ export function LineChart({ spec, sourceNodes }: ChartProps) {
               className="quant-chart__series-label"
               data-series-label-for={index}
               textAnchor="middle"
-              x={x}
-              y={rounded(y + 18 + seriesIndex * 3)}
+              x={labelXPosition}
+              y={labelY}
             >
               {pointSeries(point)}
             </text>
@@ -576,10 +757,11 @@ export function LineChart({ spec, sourceNodes }: ChartProps) {
       })}
       {labels.map((label) => (
         <SvgLabel
+          availableWidth={availableLabelWidth}
           key={label}
           label={label}
           x={labelX(label)}
-          y={chartLabelY}
+          y={layout.labelY}
         />
       ))}
     </ChartFrame>
@@ -602,9 +784,12 @@ export function StackedBar({ spec, sourceNodes }: ChartProps) {
       points.filter(({ value }) => value < 0).reduce((sum, { value }) => sum + value, 0),
     ];
   });
-  const scale = verticalScale(totals);
-  const width = Math.max(760, labels.length * 210 + 120);
-  const height = chartHeight(labels);
+  const labelSlotWidth = preferredLabelSlotWidth(labels, 210);
+  const availableLabelWidth = labelSlotWidth - 20;
+  const width = Math.max(760, labels.length * labelSlotWidth + 120);
+  const layout = verticalLayout(series, width);
+  const scale = verticalScale(totals, layout.plotTop, layout.plotBottom);
+  const height = chartHeight(labels, availableLabelWidth, layout);
   const slotWidth = (width - 120) / labels.length;
   const barWidth = Math.min(84, slotWidth * 0.48);
 
@@ -625,6 +810,7 @@ export function StackedBar({ spec, sourceNodes }: ChartProps) {
         const x = rounded(70 + labelIndex * slotWidth + (slotWidth - barWidth) / 2);
         const centerX = rounded(x + barWidth / 2);
         const points = spec.points.filter((point) => point.label === label);
+        const zeroPoints = points.filter(({ value }) => value === 0);
 
         return [
           ...points.map((point) => {
@@ -642,6 +828,13 @@ export function StackedBar({ spec, sourceNodes }: ChartProps) {
             const segmentHeight = rounded(Math.abs(endY - startY));
             const pointIndex = spec.points.indexOf(point);
             const seriesIndex = series.indexOf(pointSeries(point));
+            const zeroIndex = zeroPoints.indexOf(point);
+            const zeroCenteredIndex =
+              zeroIndex - (zeroPoints.length - 1) / 2;
+            const zeroMarkerX = rounded(centerX + zeroCenteredIndex * 14);
+            const zeroLabelX = rounded(centerX + barWidth / 2 + 72);
+            const zeroLabelY = rounded(scale.zero + zeroCenteredIndex * 18);
+            const isZero = point.value === 0;
 
             return (
               <a
@@ -662,31 +855,72 @@ export function StackedBar({ spec, sourceNodes }: ChartProps) {
                   x={x}
                   y={y}
                 />
-                <text
-                  className="quant-chart__value quant-chart__value--stacked"
-                  textAnchor="middle"
-                  x={centerX}
-                  y={rounded(y + segmentHeight / 2 + 4)}
-                >
-                  {valueLiteral(point.value)} {point.unit}
-                </text>
-                <text
-                  className="quant-chart__series-label"
-                  data-series-label-for={pointIndex}
-                  textAnchor="start"
-                  x={rounded(centerX + barWidth / 2 + 8)}
-                  y={rounded(y + segmentHeight / 2 + 4)}
-                >
-                  {pointSeries(point)}
-                </text>
+                {isZero ? (
+                  <>
+                    <line
+                      className="quant-chart__leader"
+                      data-series-leader-for={pointIndex}
+                      x1={zeroMarkerX}
+                      x2={rounded(zeroLabelX - 6)}
+                      y1={scale.zero}
+                      y2={rounded(zeroLabelY - 4)}
+                    />
+                    <circle
+                      className="quant-chart__zero-marker"
+                      cx={zeroMarkerX}
+                      cy={scale.zero}
+                      data-stack-zero-marker-for={pointIndex}
+                      fill={`url(#${patternId(domId, seriesIndex)})`}
+                      r="6"
+                    />
+                    <text
+                      className="quant-chart__value"
+                      textAnchor="start"
+                      x={zeroLabelX}
+                      y={rounded(zeroLabelY + 14)}
+                    >
+                      {valueLiteral(point.value)} {point.unit}
+                    </text>
+                    <text
+                      className="quant-chart__series-label"
+                      data-series-label-for={pointIndex}
+                      textAnchor="start"
+                      x={zeroLabelX}
+                      y={zeroLabelY}
+                    >
+                      {pointSeries(point)}
+                    </text>
+                  </>
+                ) : (
+                  <>
+                    <text
+                      className="quant-chart__value quant-chart__value--stacked"
+                      textAnchor="middle"
+                      x={centerX}
+                      y={rounded(y + segmentHeight / 2 + 4)}
+                    >
+                      {valueLiteral(point.value)} {point.unit}
+                    </text>
+                    <text
+                      className="quant-chart__series-label"
+                      data-series-label-for={pointIndex}
+                      textAnchor="start"
+                      x={rounded(centerX + barWidth / 2 + 8)}
+                      y={rounded(y + segmentHeight / 2 + 4)}
+                    >
+                      {pointSeries(point)}
+                    </text>
+                  </>
+                )}
               </a>
             );
           }),
           <SvgLabel
+            availableWidth={availableLabelWidth}
             key={`${label}-label`}
             label={label}
             x={centerX}
-            y={chartLabelY}
+            y={layout.labelY}
           />,
         ];
       })}
@@ -703,9 +937,16 @@ export function ComparisonChart({ spec, sourceNodes }: ChartProps) {
 
   const labels = labelNames(spec.points);
   const series = seriesNames(spec.points);
-  const width = Math.max(760, labels.length * 230 + 120);
-  const height = chartHeight(labels);
-  const scale = verticalScale(spec.points.map(({ value }) => value));
+  const labelSlotWidth = preferredLabelSlotWidth(labels, 230);
+  const availableLabelWidth = labelSlotWidth - 20;
+  const width = Math.max(760, labels.length * labelSlotWidth + 120);
+  const layout = verticalLayout(series, width);
+  const height = chartHeight(labels, availableLabelWidth, layout);
+  const scale = verticalScale(
+    spec.points.map(({ value }) => value),
+    layout.plotTop,
+    layout.plotBottom,
+  );
   const groupWidth = (width - 120) / labels.length;
   const availableBarWidth = groupWidth * 0.72;
   const barWidth = Math.min(56, availableBarWidth / series.length);
@@ -775,10 +1016,11 @@ export function ComparisonChart({ spec, sourceNodes }: ChartProps) {
       })}
       {labels.map((label, index) => (
         <SvgLabel
+          availableWidth={availableLabelWidth}
           key={label}
           label={label}
           x={rounded(70 + index * groupWidth + groupWidth / 2)}
-          y={chartLabelY}
+          y={layout.labelY}
         />
       ))}
     </ChartFrame>

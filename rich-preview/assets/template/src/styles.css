@@ -519,9 +519,16 @@ p {
 }
 
 .quant-chart__bar,
-.quant-chart__line-point {
+.quant-chart__line-point,
+.quant-chart__zero-marker {
   stroke: var(--ink);
   stroke-width: 1.25;
+}
+
+.quant-chart__leader {
+  stroke: var(--ink-soft);
+  stroke-width: 1.25;
+  stroke-dasharray: 3 3;
 }
 
 .quant-chart__line {

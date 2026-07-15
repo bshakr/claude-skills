@@ -84,13 +84,73 @@ function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
+const numericSigns = new Set(["+", "-", "−", "﹢", "﹣", "＋", "－"]);
+const numericSeparators = new Set([",", "_", "'", "’"]);
+
+function isDigit(value: string | undefined): boolean {
+  return value !== undefined && /\d/.test(value);
+}
+
+function spacedGroupRanges(evidence: string): Array<[number, number]> {
+  const groupedNumber =
+    /(^|[^\d])([+\-−﹢﹣＋－]?\d{1,3}(?: \d{3})+(?:\.\d+)?)(?=$|[^\d])/g;
+  return [...evidence.matchAll(groupedNumber)].map((match) => {
+    const start = (match.index ?? 0) + match[1].length;
+    return [start, start + match[2].length];
+  });
+}
+
+function isCompleteNumericLiteral(
+  evidence: string,
+  start: number,
+  literal: string,
+  groupedRanges: Array<[number, number]>,
+): boolean {
+  const end = start + literal.length;
+  const previous = evidence[start - 1];
+  const next = evidence[end];
+
+  if (groupedRanges.some(([from, to]) => start >= from && end <= to)) {
+    return false;
+  }
+  if (isDigit(previous) || isDigit(next) || numericSigns.has(previous)) {
+    return false;
+  }
+  if (previous === "." || previous === "e" || previous === "E") {
+    return false;
+  }
+  if (next === "e" || next === "E") {
+    return false;
+  }
+  if (
+    next === "." &&
+    [evidence[end + 1], evidence[end + 2]].some(
+      (character) => isDigit(character) || character === "e" || character === "E",
+    )
+  ) {
+    return false;
+  }
+  if (
+    (numericSeparators.has(previous) && isDigit(evidence[start - 2])) ||
+    (numericSeparators.has(next) && isDigit(evidence[end + 1]))
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function includesNumericLiteral(evidence: string, value: number): boolean {
   const literal = Object.is(value, -0) ? "-0" : String(value);
-  const numericToken =
-    /[+-]?(?:\d(?:[\d,_'’ ]*\d)?(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?/g;
-  return [...evidence.matchAll(numericToken)].some(
-    ([candidate]) => candidate === literal,
-  );
+  const groupedRanges = spacedGroupRanges(evidence);
+  let start = evidence.indexOf(literal);
+
+  while (start !== -1) {
+    if (isCompleteNumericLiteral(evidence, start, literal, groupedRanges)) {
+      return true;
+    }
+    start = evidence.indexOf(literal, start + 1);
+  }
+  return false;
 }
 
 export function validateChartPoint(

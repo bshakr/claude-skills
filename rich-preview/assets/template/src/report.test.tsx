@@ -373,6 +373,70 @@ describe("provenance validation", () => {
     ).toEqual({ valid: true });
   });
 
+  it.each([
+    ["separate year and percentage", 20, "Year 2025 20%"],
+    ["invalid two-digit space group", 34, "Metric 12 34%"],
+  ])("accepts %s as separate numeric tokens", (_case, value, evidence) => {
+    const sourceNodes = [
+      {
+        id: "tableCell:10-10",
+        type: "tableCell",
+        text: evidence,
+        startLine: 10,
+        endLine: 10,
+        urls: [],
+      },
+    ];
+    const label = evidence.split(" ")[0];
+
+    expect(
+      validateChartPoint(
+        {
+          label,
+          value,
+          unit: "%",
+          source: { nodeId: "tableCell:10-10", evidence },
+        },
+        sourceNodes,
+      ),
+    ).toEqual({ valid: true });
+  });
+
+  it.each([
+    ["valid spaced grouping", 1, "Metric 1 200%"],
+    ["multi-group spacing", 200, "Metric 1 200 000%"],
+    ["non-breaking-space grouping", 1, "Metric 1\u00a0200%"],
+    ["Unicode minus", 1, "Metric −1%"],
+    ["full-width minus", 1, "Metric －1%"],
+    ["full-width plus", 1, "Metric ＋1%"],
+    ["malformed decimal exponent", 1, "Metric 1.e2%"],
+    ["incomplete exponent", 1, "Metric 1e%"],
+    ["scientific exponent fragment", 2, "Metric 1e2%"],
+  ])("rejects a numeric fragment from %s", (_case, value, evidence) => {
+    const sourceNodes = [
+      {
+        id: "tableCell:11-11",
+        type: "tableCell",
+        text: evidence,
+        startLine: 11,
+        endLine: 11,
+        urls: [],
+      },
+    ];
+
+    expect(
+      validateChartPoint(
+        {
+          label: "Metric",
+          value,
+          unit: "%",
+          source: { nodeId: "tableCell:11-11", evidence },
+        },
+        sourceNodes,
+      ).valid,
+    ).toBe(false);
+  });
+
   it("normalizes only whitespace when validating a chart point", () => {
     const evidence = "Net \n revenue | -12.5 $";
     const sourceNodes = [
@@ -845,6 +909,64 @@ describe("quantitative chart vocabulary", () => {
       },
     })),
   };
+  const equalLineEvidence = Array.from(
+    { length: 6 },
+    (_, index) => `Equal plan Series ${index + 1}; value 10%`,
+  ).join("; ");
+  const equalLineSourceNodes = [
+    {
+      id: "paragraph:25-25",
+      type: "paragraph",
+      text: equalLineEvidence,
+      startLine: 25,
+      endLine: 25,
+      urls: [],
+    },
+  ];
+  const equalLineSpec: ChartSpec = {
+    id: "equal-line-series",
+    title: "Equal line series",
+    explanation: "Equal values remain individually readable.",
+    points: Array.from({ length: 6 }, (_, index) => ({
+      label: "Equal plan",
+      value: 10,
+      unit: "%",
+      series: `Series ${index + 1}`,
+      source: {
+        nodeId: "paragraph:25-25",
+        evidence: `Equal plan Series ${index + 1}; value 10%`,
+      },
+    })),
+  };
+  const zeroStackEvidence = Array.from(
+    { length: 6 },
+    (_, index) => `Zero plan Series ${index + 1}; value 0%`,
+  ).join("; ");
+  const zeroStackSourceNodes = [
+    {
+      id: "paragraph:27-27",
+      type: "paragraph",
+      text: zeroStackEvidence,
+      startLine: 27,
+      endLine: 27,
+      urls: [],
+    },
+  ];
+  const zeroStackSpec: ChartSpec = {
+    id: "zero-stack-series",
+    title: "Zero stack series",
+    explanation: "Zero segments remain individually readable.",
+    points: Array.from({ length: 6 }, (_, index) => ({
+      label: "Zero plan",
+      value: 0,
+      unit: "%",
+      series: `Series ${index + 1}`,
+      source: {
+        nodeId: "paragraph:27-27",
+        evidence: `Zero plan Series ${index + 1}; value 0%`,
+      },
+    })),
+  };
   const longTokenLabel =
     "ExtremelyLongUnbrokenCategoryIdentifierWithoutAnyWhitespaceAtAll";
   const manyWordLabel =
@@ -887,6 +1009,40 @@ describe("quantitative chart vocabulary", () => {
         },
       },
     ],
+  };
+  const wideLabels = [
+    "W".repeat(120),
+    "漢".repeat(90),
+    "Ｍ".repeat(90),
+    "@".repeat(120),
+  ];
+  const wideLabelEvidence = wideLabels
+    .map((label, index) => `${label} ${index + 1}%`)
+    .join("; ");
+  const wideLabelSourceNodes = [
+    {
+      id: "paragraph:29-29",
+      type: "paragraph",
+      text: wideLabelEvidence,
+      startLine: 29,
+      endLine: 29,
+      urls: [],
+    },
+  ];
+  const wideLabelSpec: ChartSpec = {
+    id: "wide-labels",
+    title: "Wide labels",
+    explanation: "Estimated glyph widths keep category slots separate.",
+    points: wideLabels.map((label, index) => ({
+      label,
+      value: index + 1,
+      unit: "%",
+      series: "Current",
+      source: {
+        nodeId: "paragraph:29-29",
+        evidence: `${label} ${index + 1}%`,
+      },
+    })),
   };
 
   it.each(chartCases)(
@@ -962,6 +1118,89 @@ describe("quantitative chart vocabulary", () => {
   );
 
   it.each(chartCases)(
+    "wraps and reserves SVG space for a six-series %s legend",
+    (_visualType, Chart) => {
+      const markup = renderToStaticMarkup(
+        <Chart spec={manySeriesSpec} sourceNodes={manySeriesSourceNodes} />,
+      );
+      const svg = markup.slice(
+        markup.indexOf("<svg"),
+        markup.indexOf("</svg>") + "</svg>".length,
+      );
+      const viewBoxHeight = Number(
+        svg.match(/viewBox="0 0 [^ ]+ ([^"]+)"/)?.[1],
+      );
+      const legendRows = [
+        ...svg.matchAll(/data-legend-row="(\d+)"/g),
+      ].map(([, row]) => row);
+
+      expect(svg).toContain('data-legend-rows="2"');
+      expect(new Set(legendRows)).toEqual(new Set(["0", "1"]));
+      expect(viewBoxHeight).toBeGreaterThan(430);
+    },
+  );
+
+  it("separates equal line-series markers and labels with leaders", () => {
+    const markup = renderToStaticMarkup(
+      <LineChart spec={equalLineSpec} sourceNodes={equalLineSourceNodes} />,
+    );
+    const markers = [
+      ...markup.matchAll(/<circle[^>]*data-line-point="true"[^>]*>/g),
+    ].map(([element]) => element);
+    const labels = [
+      ...markup.matchAll(/<text[^>]*data-series-label-for="\d+"[^>]*>/g),
+    ].map(([element]) => element);
+    const leaders = [
+      ...markup.matchAll(/<line[^>]*data-series-leader-for="\d+"[^>]*>/g),
+    ];
+    const attribute = (element: string, name: string) =>
+      Number(element.match(new RegExp(`${name}="([^"]+)"`))?.[1]);
+    const markerPositions = markers.map(
+      (element) => `${attribute(element, "cx")},${attribute(element, "cy")}`,
+    );
+    const labelXs = labels
+      .map((element) => attribute(element, "x"))
+      .sort((left, right) => left - right);
+
+    expect(new Set(markerPositions)).toHaveLength(equalLineSpec.points.length);
+    expect(leaders).toHaveLength(equalLineSpec.points.length);
+    expect(labels).toHaveLength(equalLineSpec.points.length);
+    for (let index = 1; index < labelXs.length; index += 1) {
+      expect(labelXs[index] - labelXs[index - 1]).toBeGreaterThanOrEqual(48);
+    }
+  });
+
+  it("gives every zero stacked series a distinct marker and label lane", () => {
+    const markup = renderToStaticMarkup(
+      <StackedBar spec={zeroStackSpec} sourceNodes={zeroStackSourceNodes} />,
+    );
+    const markers = [
+      ...markup.matchAll(/<circle[^>]*data-stack-zero-marker-for="\d+"[^>]*>/g),
+    ].map(([element]) => element);
+    const labels = [
+      ...markup.matchAll(/<text[^>]*data-series-label-for="\d+"[^>]*>/g),
+    ].map(([element]) => element);
+    const leaders = [
+      ...markup.matchAll(/<line[^>]*data-series-leader-for="\d+"[^>]*>/g),
+    ];
+    const attribute = (element: string, name: string) =>
+      Number(element.match(new RegExp(`${name}="([^"]+)"`))?.[1]);
+    const markerPositions = markers.map(
+      (element) => `${attribute(element, "cx")},${attribute(element, "cy")}`,
+    );
+    const labelYs = labels
+      .map((element) => attribute(element, "y"))
+      .sort((left, right) => left - right);
+
+    expect(new Set(markerPositions)).toHaveLength(zeroStackSpec.points.length);
+    expect(leaders).toHaveLength(zeroStackSpec.points.length);
+    expect(labels).toHaveLength(zeroStackSpec.points.length);
+    for (let index = 1; index < labelYs.length; index += 1) {
+      expect(labelYs[index] - labelYs[index - 1]).toBeGreaterThanOrEqual(16);
+    }
+  });
+
+  it.each(chartCases)(
     "hard-wraps and safely constrains long labels in the %s",
     (_visualType, Chart) => {
       const markup = renderToStaticMarkup(
@@ -992,11 +1231,19 @@ describe("quantitative chart vocabulary", () => {
         );
         expect(lines.length).toBeGreaterThan(1);
         expect(lines.length).toBeLessThanOrEqual(4);
-        expect(lines.every((line) => line.length <= 18)).toBe(true);
+        expect(lines.every((line) => line.length > 0)).toBe(true);
         expect(table).toContain(fullLabel);
         expect(svg).toContain(`, ${fullLabel}:`);
       }
-      expect(labels[1]?.[2]).toContain("…");
+      const manyWordLines = [
+        ...(labels[1]?.[2] ?? "").matchAll(
+          /<tspan[^>]*>([^<]+)<\/tspan>/g,
+        ),
+      ].map(([, line]) => line);
+      expect(
+        manyWordLines.join(" ") === manyWordLabel ||
+          manyWordLines.at(-1)?.endsWith("…"),
+      ).toBe(true);
     },
   );
 
@@ -1022,6 +1269,95 @@ describe("quantitative chart vocabulary", () => {
       );
       expect(seriesY).toBeGreaterThan(lastLabelY);
     }
+  });
+
+  it.each(chartCases)(
+    "keeps estimated wide-glyph label bounds separate in the %s",
+    (_visualType, Chart) => {
+      const markup = renderToStaticMarkup(
+        <Chart spec={wideLabelSpec} sourceNodes={wideLabelSourceNodes} />,
+      );
+      const svg = markup.slice(
+        markup.indexOf("<svg"),
+        markup.indexOf("</svg>") + "</svg>".length,
+      );
+      const table = markup.slice(
+        markup.indexOf("<table"),
+        markup.indexOf("</table>") + "</table>".length,
+      );
+      const viewBoxWidth = Number(
+        svg.match(/viewBox="0 0 ([^ ]+) [^"]+"/)?.[1],
+      );
+      const labelElements = [
+        ...svg.matchAll(/<text[^>]*data-chart-label="[^"]+"[^>]*>.*?<\/text>/g),
+      ].map(([element]) => element);
+      const attribute = (element: string, name: string) =>
+        Number(element.match(new RegExp(`${name}="([^"]+)"`))?.[1]);
+      const bounds = labelElements
+        .map((element) => ({
+          available: attribute(element, "data-label-available-width"),
+          left: attribute(element, "data-label-left"),
+          right: attribute(element, "data-label-right"),
+          width: attribute(element, "data-label-estimated-width"),
+        }))
+        .sort((left, right) => left.left - right.left);
+
+      expect(viewBoxWidth).toBeGreaterThan(1200);
+      expect(labelElements).toHaveLength(wideLabels.length);
+      for (const [index, bound] of bounds.entries()) {
+        expect(bound.width).toBeLessThanOrEqual(bound.available);
+        expect(bound.left).toBeGreaterThanOrEqual(20);
+        expect(bound.right).toBeLessThanOrEqual(viewBoxWidth - 20);
+        if (index > 0) {
+          expect(bound.left).toBeGreaterThanOrEqual(bounds[index - 1].right);
+        }
+      }
+      for (const label of wideLabels) {
+        expect(table).toContain(label);
+        expect(svg).toContain(`, ${label}:`);
+      }
+    },
+  );
+
+  it("wraps wide glyphs sooner than narrow glyphs at the same length", () => {
+    const labels = ["W".repeat(16), "i".repeat(16), "One", "Two", "Three", "Four"];
+    const evidence = labels
+      .map((label, index) => `${label} ${index + 1}%`)
+      .join("; ");
+    const sourceNodes = [
+      {
+        id: "paragraph:31-31",
+        type: "paragraph",
+        text: evidence,
+        startLine: 31,
+        endLine: 31,
+        urls: [],
+      },
+    ];
+    const markup = renderToStaticMarkup(
+      <BarChart
+        spec={{
+          id: "glyph-widths",
+          title: "Glyph widths",
+          explanation: "Wide glyphs consume more SVG space.",
+          points: labels.map((label, index) => ({
+            label,
+            value: index + 1,
+            unit: "%",
+            source: {
+              nodeId: "paragraph:31-31",
+              evidence: `${label} ${index + 1}%`,
+            },
+          })),
+        }}
+        sourceNodes={sourceNodes}
+      />,
+    );
+    const lineCounts = [
+      ...markup.matchAll(/data-label-lines="(\d+)"/g),
+    ].map(([, count]) => Number(count));
+
+    expect(lineCounts[0]).toBeGreaterThan(lineCounts[1]);
   });
 
   it.each(chartCases)("renders no %s for empty data", (_kind, Chart) => {
