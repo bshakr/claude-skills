@@ -26,6 +26,8 @@ export type ProcessSpec = {
   edges: ProcessEdgeSpec[];
 };
 
+const svgSafeIdPattern = /^[A-Za-z_][A-Za-z0-9_-]*$/;
+
 export function validateSourceRef(
   ref: SourceRef,
   nodes: SourceNode[],
@@ -67,12 +69,42 @@ export function validateProcessSpec(
   spec: ProcessSpec,
   nodes: SourceNode[],
 ): ValidationResult {
+  if (!spec.id.trim()) {
+    return { valid: false, error: "Process ID is required" };
+  }
+  if (!svgSafeIdPattern.test(spec.id)) {
+    return { valid: false, error: "Process ID must be SVG-safe" };
+  }
+  if (!spec.title.trim()) {
+    return { valid: false, error: "Process title is required" };
+  }
+  if (!spec.explanation.trim()) {
+    return { valid: false, error: "Process explanation is required" };
+  }
   if (spec.nodes.length === 0) {
     return { valid: false, error: "Process spec must include at least one node" };
   }
 
   const nodeIds = new Set<string>();
   for (const [index, processNode] of spec.nodes.entries()) {
+    if (!processNode.id.trim()) {
+      return {
+        valid: false,
+        error: `nodes[${index}]: Process node ID is required`,
+      };
+    }
+    if (!svgSafeIdPattern.test(processNode.id)) {
+      return {
+        valid: false,
+        error: `nodes[${index}]: Process node ID must be SVG-safe`,
+      };
+    }
+    if (!processNode.label.trim()) {
+      return {
+        valid: false,
+        error: `nodes[${index}]: Process node label is required`,
+      };
+    }
     if (nodeIds.has(processNode.id)) {
       return {
         valid: false,

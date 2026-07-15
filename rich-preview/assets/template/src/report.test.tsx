@@ -242,6 +242,69 @@ describe("provenance validation", () => {
     });
   });
 
+  const invalidProcessCases: Array<[string, ProcessSpec, string]> = [
+    [
+      "blank process IDs",
+      { ...processSpec, id: " " },
+      "Process ID is required",
+    ],
+    [
+      "collision-prone process IDs",
+      { ...processSpec, id: "release workflow" },
+      "Process ID must be SVG-safe",
+    ],
+    [
+      "blank process titles",
+      { ...processSpec, title: "\t" },
+      "Process title is required",
+    ],
+    [
+      "blank process explanations",
+      { ...processSpec, explanation: "\n" },
+      "Process explanation is required",
+    ],
+    [
+      "blank node IDs",
+      {
+        ...processSpec,
+        nodes: [
+          { ...processSpec.nodes[0], id: " " },
+          ...processSpec.nodes.slice(1),
+        ],
+      },
+      "nodes[0]: Process node ID is required",
+    ],
+    [
+      "collision-prone node IDs",
+      {
+        ...processSpec,
+        nodes: [
+          { ...processSpec.nodes[0], id: "draft step" },
+          ...processSpec.nodes.slice(1),
+        ],
+      },
+      "nodes[0]: Process node ID must be SVG-safe",
+    ],
+    [
+      "blank node labels",
+      {
+        ...processSpec,
+        nodes: [
+          { ...processSpec.nodes[0], label: "\t" },
+          ...processSpec.nodes.slice(1),
+        ],
+      },
+      "nodes[0]: Process node label is required",
+    ],
+  ];
+
+  it.each(invalidProcessCases)("rejects %s", (_case, spec, error) => {
+    expect(validateProcessSpec(spec, processSourceNodes)).toEqual({
+      valid: false,
+      error,
+    });
+  });
+
   it("validates every editorial item's exact source span", () => {
     const source = [
       { nodeId: "paragraph:3-3", evidence: "Draft the proposal" },
@@ -295,14 +358,8 @@ describe("provenance validation", () => {
     });
   });
 
-  it("keeps every starter process grounded in the canonical source", () => {
-    const nodes = extractSourceNodes(
-      "# Preview\n\nAdd canonical source with init_preview.py.\n",
-    );
-
-    for (const spec of Object.values(reportData.processes)) {
-      expect(validateProcessSpec(spec, nodes)).toEqual({ valid: true });
-    }
+  it("keeps starter data graph-free when the source states no relationship", () => {
+    expect(reportData).not.toHaveProperty("processes");
   });
 });
 
@@ -335,6 +392,52 @@ describe("process graph vocabulary", () => {
       expect(markup).toContain("Draft proposal");
     },
   );
+
+  it("uses unique SVG IDs when the same graph spec is rendered twice", () => {
+    const markup = renderToStaticMarkup(
+      <>
+        <ProcessFlow spec={processSpec} sourceNodes={processSourceNodes} />
+        <ProcessFlow spec={processSpec} sourceNodes={processSourceNodes} />
+      </>,
+    );
+    const ids = [...markup.matchAll(/\sid="([^"]+)"/g)].map(
+      ([, id]) => id,
+    );
+
+    expect(ids.length).toBeGreaterThan(0);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("keeps dependency arrows directed across adjacent layout rows", () => {
+    const nodes = ["source", "peer-a", "peer-b", "target"].map(
+      (id, index) => ({
+        ...processSpec.nodes[0],
+        id,
+        label: `Dependency ${index + 1}`,
+      }),
+    );
+    const spec = {
+      ...processSpec,
+      id: "multi-row-dependencies",
+      nodes,
+      edges: [
+        {
+          ...processSpec.edges[0],
+          from: "source",
+          to: "target",
+        },
+      ],
+    };
+    const markup = renderToStaticMarkup(
+      <DependencyMap spec={spec} sourceNodes={processSourceNodes} />,
+    );
+    const edge = markup.match(
+      /<line class="process-graph__edge" data-edge-shape="arrow"[^>]* y1="([^"]+)" y2="([^"]+)"/,
+    );
+
+    expect(edge).not.toBeNull();
+    expect(Number(edge?.[1])).toBeLessThan(Number(edge?.[2]));
+  });
 });
 
 describe("CompleteDocument", () => {
@@ -452,7 +555,10 @@ describe("CompleteDocument", () => {
 describe("Report", () => {
   it("renders a verdict-led editorial layer before the canonical document", () => {
     const markup = renderToStaticMarkup(
-      <Report source="# Plan\n\nKeep the complete source.\n" manifest={reportManifest} />,
+      <Report
+        source={"# Plan\n\nAdd canonical source with init_preview.py.\n"}
+        manifest={reportManifest}
+      />,
     );
 
     expect(markup.indexOf('data-editorial-layer="true"')).toBeLessThan(
@@ -465,7 +571,7 @@ describe("Report", () => {
   it("suppresses empty editorial sections instead of rendering filler", () => {
     const markup = renderToStaticMarkup(
       <Report
-        source="# Plan\n"
+        source={"# Plan\n"}
         manifest={reportManifest}
         editorialData={emptyEditorialData}
       />,
@@ -509,7 +615,7 @@ describe("Report", () => {
 
     const markup = renderToStaticMarkup(
       <Report
-        source="# Plan\n"
+        source={"# Plan\n\nDecision evidence\n"}
         manifest={reportManifest}
         editorialData={editorialData}
       />,
@@ -520,5 +626,51 @@ describe("Report", () => {
         /data-source-node-ids="heading:1-1 paragraph:3-3"/g,
       ),
     ).toHaveLength(5);
+  });
+
+  it("suppresses derived editorial claims with invalid evidence", () => {
+    const invalidTitle = "Unsupported editorial claim";
+    const invalidBody = "This statement has no source support.";
+    const editorialData = {
+      ...emptyEditorialData,
+      highlights: [
+        {
+          label: "Claim",
+          title: invalidTitle,
+          body: invalidBody,
+          source: [
+            {
+              nodeId: "paragraph:3-3",
+              evidence: "invented evidence",
+            },
+          ],
+        },
+      ],
+    };
+
+    const markup = renderToStaticMarkup(
+      <Report
+        source={"# Plan\n\nGrounded source text.\n"}
+        manifest={reportManifest}
+        editorialData={editorialData}
+      />,
+    );
+
+    expect(markup).not.toContain(invalidTitle);
+    expect(markup).not.toContain(invalidBody);
+    expect(markup).toContain("Grounded source text.");
+  });
+
+  it("does not present starter process relationships as sourced facts", () => {
+    const markup = renderToStaticMarkup(
+      <Report
+        source={"# Preview\n\nAdd canonical source with init_preview.py.\n"}
+        manifest={reportManifest}
+      />,
+    );
+
+    expect(markup).not.toContain("data-visual-id");
+    expect(markup).not.toContain("Source readiness branch");
+    expect(markup).not.toContain("Preview dependencies");
   });
 });

@@ -1,12 +1,29 @@
 import reportData from "./content/report-data.json"
 import { CompleteDocument, EditorialLayer } from "./components/editorial"
+import { validateEditorialData } from "./lib/provenance"
+import { extractSourceNodes } from "./lib/source"
 import "./styles.css"
 
-export const Report = ({ editorialData = reportData, ...documentProps }) => (
-  <div className="preview-shell">
-    <EditorialLayer data={editorialData} />
-    <CompleteDocument {...documentProps} />
-  </div>
-)
+export const Report = ({ editorialData = reportData, ...documentProps }) => {
+  const sourceNodes = extractSourceNodes(documentProps.source ?? "")
+  const validation = validateEditorialData(editorialData, sourceNodes)
+  const safeEditorialData = validation.valid
+    ? editorialData
+    : {
+        ...editorialData,
+        highlights: [],
+        comparisons: [],
+        timeline: [],
+        risks: [],
+        actions: [],
+      }
+
+  return (
+    <div className="preview-shell">
+      <EditorialLayer data={safeEditorialData} />
+      <CompleteDocument {...documentProps} />
+    </div>
+  )
+}
 
 <Report {...props} />

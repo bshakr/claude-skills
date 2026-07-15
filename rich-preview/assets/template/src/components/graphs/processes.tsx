@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 import {
   type ProcessEdgeSpec,
@@ -20,6 +20,7 @@ type Point = {
 
 type GraphFrameProps = ProcessGraphProps & {
   children: ReactNode;
+  domId: string;
   height: number;
   kind: string;
   width: number;
@@ -28,16 +29,13 @@ type GraphFrameProps = ProcessGraphProps & {
 const nodeWidth = 144;
 const nodeHeight = 72;
 
-function safeId(value: string): string {
-  return value.replace(/[^a-zA-Z0-9_-]/g, "-");
-}
-
 function graphId(kind: string, spec: ProcessSpec): string {
-  return `${kind}-${safeId(spec.id)}`;
+  return `${kind}-${spec.id}`;
 }
 
-function markerId(kind: string, spec: ProcessSpec): string {
-  return `${graphId(kind, spec)}-arrow`;
+function useGraphDomId(kind: string, spec: ProcessSpec): string {
+  const instanceId = useId().replaceAll(":", "");
+  return `${graphId(kind, spec)}-${instanceId}`;
 }
 
 function sourceHref(ref: SourceRef): string {
@@ -82,6 +80,7 @@ function SourceAttribution({ spec }: { spec: ProcessSpec }) {
 
 function GraphFrame({
   children,
+  domId,
   height,
   kind,
   sourceNodes,
@@ -94,8 +93,8 @@ function GraphFrame({
   }
 
   const visualId = graphId(kind, spec);
-  const titleId = `${visualId}-title`;
-  const descriptionId = `${visualId}-description`;
+  const titleId = `${domId}-title`;
+  const descriptionId = `${domId}-description`;
 
   return (
     <figure
@@ -117,7 +116,7 @@ function GraphFrame({
           <desc id={descriptionId}>{spec.explanation}</desc>
           <defs>
             <marker
-              id={markerId(kind, spec)}
+              id={`${domId}-arrow`}
               markerHeight="8"
               markerUnits="strokeWidth"
               markerWidth="8"
@@ -178,10 +177,17 @@ function trimmedLine(from: Point, to: Point, padding: number): [Point, Point] {
   const distance = Math.hypot(dx, dy) || 1;
   const unitX = dx / distance;
   const unitY = dy / distance;
+  const safePadding = Math.min(padding, Math.max(0, (distance - 12) / 2));
 
   return [
-    { x: from.x + unitX * padding, y: from.y + unitY * padding },
-    { x: to.x - unitX * padding, y: to.y - unitY * padding },
+    {
+      x: from.x + unitX * safePadding,
+      y: from.y + unitY * safePadding,
+    },
+    {
+      x: to.x - unitX * safePadding,
+      y: to.y - unitY * safePadding,
+    },
   ];
 }
 
@@ -258,6 +264,7 @@ function RectNode({
 
 export function ProcessFlow({ spec, sourceNodes }: ProcessGraphProps) {
   const kind = "process-flow";
+  const domId = useGraphDomId(kind, spec);
   const width = Math.max(720, spec.nodes.length * 184 + 80);
   const height = 250;
   const points = new Map(
@@ -266,10 +273,11 @@ export function ProcessFlow({ spec, sourceNodes }: ProcessGraphProps) {
       { x: 112 + index * 184, y: 125 },
     ]),
   );
-  const arrow = markerId(kind, spec);
+  const arrow = `${domId}-arrow`;
 
   return (
     <GraphFrame
+      domId={domId}
       height={height}
       kind={kind}
       sourceNodes={sourceNodes}
@@ -303,6 +311,7 @@ export function ProcessFlow({ spec, sourceNodes }: ProcessGraphProps) {
 
 export function BranchFlow({ spec, sourceNodes }: ProcessGraphProps) {
   const kind = "branch-flow";
+  const domId = useGraphDomId(kind, spec);
   const branchCount = Math.max(1, spec.nodes.length - 1);
   const width = Math.max(720, branchCount * 190 + 120);
   const height = 350;
@@ -320,11 +329,12 @@ export function BranchFlow({ spec, sourceNodes }: ProcessGraphProps) {
           },
     );
   });
-  const arrow = markerId(kind, spec);
+  const arrow = `${domId}-arrow`;
   const decision = spec.nodes[0];
 
   return (
     <GraphFrame
+      domId={domId}
       height={height}
       kind={kind}
       sourceNodes={sourceNodes}
@@ -371,6 +381,7 @@ export function BranchFlow({ spec, sourceNodes }: ProcessGraphProps) {
 
 export function SequenceFlow({ spec, sourceNodes }: ProcessGraphProps) {
   const kind = "sequence-flow";
+  const domId = useGraphDomId(kind, spec);
   const width = Math.max(720, spec.nodes.length * 190 + 80);
   const height = Math.max(320, 180 + spec.edges.length * 62);
   const points = new Map(
@@ -379,10 +390,11 @@ export function SequenceFlow({ spec, sourceNodes }: ProcessGraphProps) {
       { x: 110 + index * 190, y: 68 },
     ]),
   );
-  const arrow = markerId(kind, spec);
+  const arrow = `${domId}-arrow`;
 
   return (
     <GraphFrame
+      domId={domId}
       height={height}
       kind={kind}
       sourceNodes={sourceNodes}
@@ -470,6 +482,7 @@ export function SequenceFlow({ spec, sourceNodes }: ProcessGraphProps) {
 
 export function DependencyMap({ spec, sourceNodes }: ProcessGraphProps) {
   const kind = "dependency-map";
+  const domId = useGraphDomId(kind, spec);
   const width = 760;
   const columns = Math.min(3, Math.max(1, spec.nodes.length));
   const rows = Math.ceil(spec.nodes.length / columns);
@@ -484,10 +497,11 @@ export function DependencyMap({ spec, sourceNodes }: ProcessGraphProps) {
       },
     ]),
   );
-  const arrow = markerId(kind, spec);
+  const arrow = `${domId}-arrow`;
 
   return (
     <GraphFrame
+      domId={domId}
       height={height}
       kind={kind}
       sourceNodes={sourceNodes}
