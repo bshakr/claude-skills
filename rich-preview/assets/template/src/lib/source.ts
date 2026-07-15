@@ -14,6 +14,26 @@ export type SourceNode = {
   urls: string[];
 };
 
+type RawHtmlOrigin = {
+  startOffset: number;
+  endOffset: number;
+  tagName?: string;
+};
+
+type SourceAnchorIdentity = {
+  nodeId: string;
+  type: string;
+  startLine: number;
+  endLine: number;
+  startOffset: number;
+  endOffset: number;
+};
+
+export type SourceAnchorModel = {
+  identities: SourceAnchorIdentity[];
+  rawHtmlOrigins: RawHtmlOrigin[];
+};
+
 export type SourceRef = {
   nodeId: string;
   evidence: string;
@@ -63,58 +83,62 @@ function sourceTypeForElement(element: HastElement): string | undefined {
 }
 
 export function canonicalSourceAnchorPlugin(
-  nodes: SourceNode[],
+  model: SourceAnchorModel,
 ): Plugin<[], HastRoot> {
-  const sourceIdsByBase = new Map<string, string[]>();
-  for (const node of nodes) {
-    const baseId = sourceNodeId(node.type, node.startLine, node.endLine);
-    const ids = sourceIdsByBase.get(baseId) ?? [];
-    ids.push(node.id);
-    sourceIdsByBase.set(baseId, ids);
+  const sourceNodesByIdentity = new Map<string, SourceAnchorIdentity>();
+  for (const identity of model.identities) {
+    sourceNodesByIdentity.set(
+      `${identity.type}:${identity.startOffset}-${identity.endOffset}`,
+      identity,
+    );
   }
 
   return () => (tree) => {
     const anchoredSourceIds = new Set<string>();
     const elements: HastElement[] = [];
-    const occurrences = new Map<string, number>();
 
     visit(tree, "element", (element: HastElement) => {
-      elements.push(element);
       const sourceType = sourceTypeForElement(element);
-      if (!sourceType || !element.position) {
+      const startOffset = element.position?.start.offset;
+      const endOffset = element.position?.end.offset;
+      if (startOffset === undefined || endOffset === undefined) {
         return;
       }
 
-      const baseId = sourceNodeId(
-        sourceType,
-        element.position.start.line,
-        element.position.end.line,
+      const hasRawOrigin = model.rawHtmlOrigins.some(
+        (origin) =>
+          (origin.startOffset <= startOffset && origin.endOffset >= endOffset) ||
+          (origin.startOffset === startOffset &&
+            origin.tagName === element.tagName),
       );
-      const sourceIds = sourceIdsByBase.get(baseId);
-      if (!sourceIds) {
+      if (hasRawOrigin) {
         return;
       }
+      elements.push(element);
 
-      const occurrence = occurrences.get(baseId) ?? 0;
-      const sourceId = sourceIds[occurrence];
-      if (!sourceId) {
+      if (!sourceType) {
         return;
       }
-      occurrences.set(baseId, occurrence + 1);
-      element.properties.id = sourceAnchorId(sourceId);
-      anchoredSourceIds.add(sourceId);
+      const identity = sourceNodesByIdentity.get(
+        `${sourceType}:${startOffset}-${endOffset}`,
+      );
+      if (!identity) {
+        return;
+      }
+      element.properties.id = sourceAnchorId(identity.nodeId);
+      anchoredSourceIds.add(identity.nodeId);
     });
 
-    for (const node of nodes) {
-      if (anchoredSourceIds.has(node.id)) {
+    for (const identity of model.identities) {
+      if (anchoredSourceIds.has(identity.nodeId)) {
         continue;
       }
 
       const containingElements = elements.filter(
         (element) =>
           element.position &&
-          element.position.start.line <= node.startLine &&
-          element.position.end.line >= node.endLine,
+          element.position.start.line <= identity.startLine &&
+          element.position.end.line >= identity.endLine,
       );
       const target = containingElements.at(-1);
       if (!target) {
@@ -125,7 +149,7 @@ export function canonicalSourceAnchorPlugin(
         tagName: "span",
         properties: {
           ariaHidden: "true",
-          id: sourceAnchorId(node.id),
+          id: sourceAnchorId(identity.nodeId),
         },
         children: [],
       });
@@ -190,6 +214,50 @@ export function extractSourceNodes(markdown: string): SourceNode[] {
     });
   });
   return nodes;
+}
+
+export function extractSourceAnchorModel(markdown: string): SourceAnchorModel {
+  const tree = unified().use(remarkParse).use(remarkGfm).parse(markdown);
+  const identities: SourceAnchorIdentity[] = [];
+  const rawHtmlOrigins: RawHtmlOrigin[] = [];
+  const idOccurrences = new Map<string, number>();
+
+  visit(tree, (node) => {
+    if (!sourceNodeTypes.has(node.type) || !node.position) {
+      return;
+    }
+    const startOffset = node.position.start.offset;
+    const endOffset = node.position.end.offset;
+    if (startOffset === undefined || endOffset === undefined) {
+      return;
+    }
+    const startLine = node.position.start.line;
+    const endLine = node.position.end.line;
+    const baseId = sourceNodeId(node.type, startLine, endLine);
+    const occurrence = (idOccurrences.get(baseId) ?? 0) + 1;
+    idOccurrences.set(baseId, occurrence);
+    identities.push({
+      nodeId: occurrence === 1 ? baseId : `${baseId}:${occurrence}`,
+      type: node.type,
+      startLine,
+      endLine,
+      startOffset,
+      endOffset,
+    });
+  });
+
+  visit(tree, "html", (node) => {
+    const startOffset = node.position?.start.offset;
+    const endOffset = node.position?.end.offset;
+    if (startOffset === undefined || endOffset === undefined) {
+      return;
+    }
+    const tagName = node.value
+      .match(/^<\s*([A-Za-z][A-Za-z0-9:-]*)\b/)?.[1]
+      ?.toLowerCase();
+    rawHtmlOrigins.push({ startOffset, endOffset, tagName });
+  });
+  return { identities, rawHtmlOrigins };
 }
 
 export function sourceCoverage(markdown: string): SourceCoverage {

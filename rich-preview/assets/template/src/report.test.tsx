@@ -489,6 +489,31 @@ describe("CompleteDocument", () => {
     }
   });
 
+  it("does not let a raw HTML anchor steal a Markdown link's source ID", () => {
+    const source =
+      '<a id="source-link:1-1" href="https://raw.example">Raw</a> and [Markdown](https://markdown.example)\n';
+    const nodes = extractSourceNodes(source);
+    const markup = renderToStaticMarkup(
+      <CompleteDocument source={source} manifest={reportManifest} />,
+    );
+    const escapedSource = source
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+
+    expect(nodes.filter(({ type }) => type === "link")).toMatchObject([
+      { id: "link:1-1", text: "Markdown" },
+    ]);
+    expect(markup).toMatch(
+      /<a(?=[^>]*href="https:\/\/markdown\.example")(?=[^>]*id="source-link:1-1")[^>]*>Markdown<\/a>/,
+    );
+    expect(markup).not.toMatch(
+      /<a(?=[^>]*href="https:\/\/raw\.example")(?=[^>]*id="source-link:1-1")/,
+    );
+    expect(markup).toContain(`<pre>${escapedSource}</pre>`);
+  });
+
   it("renders the complete canonical source and raw verification", () => {
     const source = "# Plan\n\nFirst paragraph.\n\n- Keep this item\n";
     const manifest = {

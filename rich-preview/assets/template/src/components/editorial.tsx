@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 
 import {
   canonicalSourceAnchorPlugin,
+  extractSourceAnchorModel,
   sourceCoverage,
   type SourceRef,
 } from "../lib/source";
@@ -303,6 +304,7 @@ export function EditorialLayer({ data }: { data: EditorialData }) {
 
 export function CompleteDocument({ source, manifest }: CompleteDocumentProps) {
   const coverage = sourceCoverage(source);
+  const sourceAnchorModel = extractSourceAnchorModel(source);
 
   return (
     <main className="complete-document" data-complete-document="true">
@@ -320,7 +322,7 @@ export function CompleteDocument({ source, manifest }: CompleteDocumentProps) {
           rehypePlugins={[
             rehypeRaw,
             rehypeSanitize,
-            canonicalSourceAnchorPlugin(coverage.nodes),
+            canonicalSourceAnchorPlugin(sourceAnchorModel),
           ]}
           components={{
             img: ({ alt }) => (
