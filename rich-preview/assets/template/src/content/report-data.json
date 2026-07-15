@@ -1,0 +1,70 @@
+{
+  "title": "Turn the source into a decision-ready brief",
+  "eyebrow": "Editorial preview",
+  "lede": "Start with the verdict and the work it unlocks, then use the complete canonical document below to verify every detail.",
+  "status": "Ready for review",
+  "highlights": [
+    {
+      "label": "Key decision",
+      "title": "Add the canonical source",
+      "body": "Initialize the preview with the complete source before sharing it for review.",
+      "source": [
+        {
+          "nodeId": "paragraph:3-3",
+          "evidence": "Add canonical source with init_preview.py."
+        }
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "label": "Preview state",
+      "before": "A template waiting for its source",
+      "after": "A preview grounded in the canonical document",
+      "source": [
+        {
+          "nodeId": "paragraph:3-3",
+          "evidence": "Add canonical source with init_preview.py."
+        }
+      ]
+    }
+  ],
+  "timeline": [
+    {
+      "label": "Next",
+      "title": "Initialize the preview",
+      "body": "Add the canonical source, then review the editorial summary against the complete document.",
+      "source": [
+        {
+          "nodeId": "paragraph:3-3",
+          "evidence": "Add canonical source with init_preview.py."
+        }
+      ]
+    }
+  ],
+  "risks": [
+    {
+      "level": "low",
+      "title": "The source is not initialized yet",
+      "body": "The template cannot provide a grounded editorial view until the canonical source is added.",
+      "source": [
+        {
+          "nodeId": "paragraph:3-3",
+          "evidence": "Add canonical source with init_preview.py."
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "title": "Add the canonical source",
+      "body": "Run the initializer and replace this starter content with a source-grounded editorial brief.",
+      "source": [
+        {
+          "nodeId": "paragraph:3-3",
+          "evidence": "Add canonical source with init_preview.py."
+        }
+      ]
+    }
+  ]
+}

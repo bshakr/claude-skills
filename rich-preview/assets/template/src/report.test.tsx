@@ -3,6 +3,27 @@ import { describe, expect, it } from "vitest";
 
 import { CompleteDocument } from "./components/editorial";
 import { extractSourceNodes, sourceCoverage } from "./lib/source";
+import Report from "./report.mdx";
+
+const reportManifest = {
+  slug: "plan",
+  source_filename: "plan.md",
+  source_path: "/tmp/plan.md",
+  source_sha256:
+    "eee82b2be304875b7f6ea3f8c9cc3c8d3a2cfcad892b549b936f8fcd5709de7c",
+};
+
+const emptyEditorialData = {
+  title: "A complete, decision-ready preview",
+  eyebrow: "Editorial brief",
+  lede: "The source remains available in full after this overview.",
+  status: "Ready for review",
+  highlights: [],
+  comparisons: [],
+  timeline: [],
+  risks: [],
+  actions: [],
+};
 
 describe("extractSourceNodes", () => {
   it("extracts supported source nodes in source order", () => {
@@ -216,5 +237,79 @@ describe("CompleteDocument", () => {
     expect(markup).toContain(
       "&lt;img src=&quot;https://assets.example.invalid/badge.png&quot; alt=&quot;Remote badge&quot;&gt;",
     );
+  });
+});
+
+describe("Report", () => {
+  it("renders a verdict-led editorial layer before the canonical document", () => {
+    const markup = renderToStaticMarkup(
+      <Report source="# Plan\n\nKeep the complete source.\n" manifest={reportManifest} />,
+    );
+
+    expect(markup.indexOf('data-editorial-layer="true"')).toBeLessThan(
+      markup.indexOf('data-complete-document="true"'),
+    );
+    expect(markup).toContain("Key decisions");
+    expect(markup).toContain("Next actions");
+  });
+
+  it("suppresses empty editorial sections instead of rendering filler", () => {
+    const markup = renderToStaticMarkup(
+      <Report
+        source="# Plan\n"
+        manifest={reportManifest}
+        editorialData={emptyEditorialData}
+      />,
+    );
+
+    expect(markup).toContain('data-editorial-layer="true"');
+    expect(markup).toContain(emptyEditorialData.title);
+    expect(markup).not.toContain("Key decisions");
+    expect(markup).not.toContain("What changes");
+    expect(markup).not.toContain("Timeline");
+    expect(markup).not.toContain("Risks to watch");
+    expect(markup).not.toContain("Next actions");
+  });
+
+  it("attaches source node IDs to every editorial item", () => {
+    const source = [
+      { nodeId: "heading:1-1", evidence: "Plan" },
+      { nodeId: "paragraph:3-3", evidence: "Decision evidence" },
+    ];
+    const editorialData = {
+      ...emptyEditorialData,
+      highlights: [
+        { label: "Decision", title: "Proceed", body: "Approved.", source },
+      ],
+      comparisons: [
+        { label: "Flow", before: "Manual", after: "Guided", source },
+      ],
+      timeline: [
+        { label: "Now", title: "Review", body: "Read the plan.", source },
+      ],
+      risks: [
+        {
+          level: "medium",
+          title: "Adoption",
+          body: "Confirm the owner.",
+          source,
+        },
+      ],
+      actions: [{ title: "Confirm", body: "Name the owner.", source }],
+    };
+
+    const markup = renderToStaticMarkup(
+      <Report
+        source="# Plan\n"
+        manifest={reportManifest}
+        editorialData={editorialData}
+      />,
+    );
+
+    expect(
+      markup.match(
+        /data-source-node-ids="heading:1-1 paragraph:3-3"/g,
+      ),
+    ).toHaveLength(5);
   });
 });

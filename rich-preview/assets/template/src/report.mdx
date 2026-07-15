@@ -1,5 +1,12 @@
-import { CompleteDocument } from "./components/editorial"
+import reportData from "./content/report-data.json"
+import { CompleteDocument, EditorialLayer } from "./components/editorial"
+import "./styles.css"
 
-export const Report = (props) => <CompleteDocument {...props} />
+export const Report = ({ editorialData = reportData, ...documentProps }) => (
+  <div className="preview-shell">
+    <EditorialLayer data={editorialData} />
+    <CompleteDocument {...documentProps} />
+  </div>
+)
 
 <Report {...props} />
