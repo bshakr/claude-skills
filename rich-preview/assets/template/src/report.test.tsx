@@ -1726,8 +1726,8 @@ describe("Report", () => {
     expect(markup.indexOf('data-editorial-layer="true"')).toBeLessThan(
       markup.indexOf('data-complete-document="true"'),
     );
-    expect(markup).toContain("Key decisions");
-    expect(markup).toContain("Next actions");
+    expect(markup).toContain("Turn the source into a decision-ready brief");
+    expect(markup).toContain("Complete document");
   });
 
   it("suppresses empty editorial sections instead of rendering filler", () => {
