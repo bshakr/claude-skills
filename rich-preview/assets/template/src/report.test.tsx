@@ -63,6 +63,48 @@ describe("extractSourceNodes", () => {
     expect(coverage.coveredNodes).toBe(coverage.totalNodes);
     expect(coverage.percentage).toBe(100);
   });
+
+  it("assigns unique deterministic IDs to same-line links", () => {
+    const source =
+      "[First](https://example.com/first) and [Second](https://example.com/second)\n";
+
+    const firstPass = extractSourceNodes(source).filter(
+      (node) => node.type === "link",
+    );
+    const secondPass = extractSourceNodes(source).filter(
+      (node) => node.type === "link",
+    );
+
+    expect(new Set(firstPass.map((node) => node.id))).toHaveLength(
+      firstPass.length,
+    );
+    expect(secondPass.map((node) => node.id)).toEqual(
+      firstPass.map((node) => node.id),
+    );
+  });
+
+  it("assigns unique deterministic IDs to same-row table cells", () => {
+    const source = [
+      "| First | Second | Third |",
+      "| --- | --- | --- |",
+      "| One | Two | Three |",
+      "",
+    ].join("\n");
+
+    const firstPass = extractSourceNodes(source).filter(
+      (node) => node.type === "tableCell",
+    );
+    const secondPass = extractSourceNodes(source).filter(
+      (node) => node.type === "tableCell",
+    );
+
+    expect(new Set(firstPass.map((node) => node.id))).toHaveLength(
+      firstPass.length,
+    );
+    expect(secondPass.map((node) => node.id)).toEqual(
+      firstPass.map((node) => node.id),
+    );
+  });
 });
 
 describe("CompleteDocument", () => {
@@ -118,5 +160,61 @@ describe("CompleteDocument", () => {
     expect(formattedMarkup).not.toContain("onerror=");
     expect(formattedMarkup).not.toContain("dangerouslySetInnerHTML");
     expect(markup).toContain("globalThis.__previewExecuted = true");
+  });
+
+  it("renders Markdown images without a live source", () => {
+    const source =
+      "![Remote chart](https://assets.example.invalid/chart.png)\n";
+    const manifest = {
+      slug: "markdown-image",
+      source_filename: "markdown-image.md",
+      source_path: "/tmp/markdown-image.md",
+      source_sha256: "markdown-image-source-hash",
+    };
+
+    const markup = renderToStaticMarkup(
+      <CompleteDocument source={source} manifest={manifest} />,
+    );
+    const formattedMarkup = markup.slice(
+      markup.indexOf("<article"),
+      markup.indexOf("</article>"),
+    );
+
+    expect(formattedMarkup).not.toContain("<img");
+    expect(formattedMarkup).not.toContain(
+      "https://assets.example.invalid/chart.png",
+    );
+    expect(markup).not.toContain('rel="preload" as="image"');
+    expect(formattedMarkup).toContain("Remote chart");
+    expect(markup).toContain(source.trim());
+  });
+
+  it("renders raw HTML images without a live source", () => {
+    const source =
+      '<img src="https://assets.example.invalid/badge.png" alt="Remote badge">\n';
+    const manifest = {
+      slug: "html-image",
+      source_filename: "html-image.md",
+      source_path: "/tmp/html-image.md",
+      source_sha256: "html-image-source-hash",
+    };
+
+    const markup = renderToStaticMarkup(
+      <CompleteDocument source={source} manifest={manifest} />,
+    );
+    const formattedMarkup = markup.slice(
+      markup.indexOf("<article"),
+      markup.indexOf("</article>"),
+    );
+
+    expect(formattedMarkup).not.toContain("<img");
+    expect(formattedMarkup).not.toContain(
+      "https://assets.example.invalid/badge.png",
+    );
+    expect(markup).not.toContain('rel="preload" as="image"');
+    expect(formattedMarkup).toContain("Remote badge");
+    expect(markup).toContain(
+      "&lt;img src=&quot;https://assets.example.invalid/badge.png&quot; alt=&quot;Remote badge&quot;&gt;",
+    );
   });
 });

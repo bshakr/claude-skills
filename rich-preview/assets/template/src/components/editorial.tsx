@@ -34,6 +34,11 @@ export function CompleteDocument({ source, manifest }: CompleteDocumentProps) {
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           rehypePlugins={[rehypeRaw, rehypeSanitize]}
+          components={{
+            img: ({ alt }) => (
+              <span data-inert-image="true">{alt ?? "Image"}</span>
+            ),
+          }}
         >
           {source}
         </ReactMarkdown>

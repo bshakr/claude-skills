@@ -79,6 +79,7 @@ function nodeUrls(node: Nodes): string[] {
 export function extractSourceNodes(markdown: string): SourceNode[] {
   const tree = unified().use(remarkParse).use(remarkGfm).parse(markdown);
   const nodes: SourceNode[] = [];
+  const idOccurrences = new Map<string, number>();
 
   visit(tree, (node) => {
     if (!sourceNodeTypes.has(node.type) || !node.position) {
@@ -86,8 +87,11 @@ export function extractSourceNodes(markdown: string): SourceNode[] {
     }
     const startLine = node.position.start.line;
     const endLine = node.position.end.line;
+    const baseId = sourceNodeId(node.type, startLine, endLine);
+    const occurrence = (idOccurrences.get(baseId) ?? 0) + 1;
+    idOccurrences.set(baseId, occurrence);
     nodes.push({
-      id: sourceNodeId(node.type, startLine, endLine),
+      id: occurrence === 1 ? baseId : `${baseId}:${occurrence}`,
       type: node.type,
       text: nodeText(node),
       startLine,
