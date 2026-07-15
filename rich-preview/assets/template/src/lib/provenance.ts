@@ -26,6 +26,21 @@ export type ProcessSpec = {
   edges: ProcessEdgeSpec[];
 };
 
+export type ChartPoint = {
+  label: string;
+  value: number;
+  unit: string;
+  series?: string;
+  source: SourceRef;
+};
+
+export type ChartSpec = {
+  id: string;
+  title: string;
+  explanation: string;
+  points: ChartPoint[];
+};
+
 const svgSafeIdPattern = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 
 export function validateSourceRef(
@@ -63,6 +78,92 @@ function contextualize(
     return result;
   }
   return { valid: false, error: `${context}: ${result.error}` };
+}
+
+function normalizeWhitespace(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function includesNumericLiteral(evidence: string, value: number): boolean {
+  const literal = escapeRegExp(String(value));
+  return new RegExp(
+    `(?:^|[^0-9.eE+.-])${literal}(?=$|[^0-9.eE+.-])`,
+  ).test(evidence);
+}
+
+export function validateChartPoint(
+  point: ChartPoint,
+  nodes: SourceNode[],
+): ValidationResult {
+  if (!point.label.trim()) {
+    return { valid: false, error: "Chart point label is required" };
+  }
+  if (!Number.isFinite(point.value)) {
+    return { valid: false, error: "Chart point value must be finite" };
+  }
+  if (!point.unit.trim()) {
+    return { valid: false, error: "Chart point unit is required" };
+  }
+  if (point.series !== undefined && !point.series.trim()) {
+    return { valid: false, error: "Chart point series cannot be blank" };
+  }
+  if (!point.source) {
+    return { valid: false, error: "Missing source provenance" };
+  }
+  const sourceResult = validateSourceRef(point.source, nodes);
+  if (!sourceResult.valid) {
+    return sourceResult;
+  }
+
+  const evidence = normalizeWhitespace(point.source.evidence);
+  if (
+    !evidence.includes(normalizeWhitespace(point.label)) ||
+    !includesNumericLiteral(evidence, point.value) ||
+    !evidence.includes(normalizeWhitespace(point.unit))
+  ) {
+    return {
+      valid: false,
+      error: `Chart point is not present in ${point.source.nodeId}`,
+    };
+  }
+
+  return { valid: true };
+}
+
+export function validateChartSpec(
+  spec: ChartSpec,
+  nodes: SourceNode[],
+): ValidationResult {
+  if (!spec.id.trim()) {
+    return { valid: false, error: "Chart ID is required" };
+  }
+  if (!svgSafeIdPattern.test(spec.id)) {
+    return { valid: false, error: "Chart ID must be SVG-safe" };
+  }
+  if (!spec.title.trim()) {
+    return { valid: false, error: "Chart title is required" };
+  }
+  if (!spec.explanation.trim()) {
+    return { valid: false, error: "Chart explanation is required" };
+  }
+  if (spec.points.length === 0) {
+    return { valid: false, error: "Chart spec must include at least one point" };
+  }
+
+  for (const [index, point] of spec.points.entries()) {
+    const result = contextualize(
+      `points[${index}]`,
+      validateChartPoint(point, nodes),
+    );
+    if (!result.valid) {
+      return result;
+    }
+  }
+  return { valid: true };
 }
 
 export function validateProcessSpec(

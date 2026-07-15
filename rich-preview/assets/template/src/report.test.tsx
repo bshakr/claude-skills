@@ -3,13 +3,23 @@ import { describe, expect, it } from "vitest";
 
 import { CompleteDocument } from "./components/editorial";
 import {
+  BarChart,
+  ComparisonChart,
+  LineChart,
+  StackedBar,
+} from "./components/graphs/charts";
+import {
   BranchFlow,
   DependencyMap,
   ProcessFlow,
   SequenceFlow,
 } from "./components/graphs/processes";
 import {
+  type ChartPoint,
+  type ChartSpec,
   type ProcessSpec,
+  validateChartPoint,
+  validateChartSpec,
   validateEditorialData,
   validateProcessSpec,
   validateSourceRef,
@@ -101,6 +111,47 @@ const processSpec: ProcessSpec = {
       },
     },
   ],
+};
+
+const quantitativeEvidence = [
+  "A very long standard plan label Current 12%",
+  "A very long standard plan label Target 18%",
+  "Premium plan Current -4%",
+  "Premium plan Target -2%",
+  "Zero plan Current 0%",
+  "Zero plan Target 0%",
+].join("; ");
+const quantitativeSourceNodes = [
+  {
+    id: "paragraph:20-20",
+    type: "paragraph",
+    text: quantitativeEvidence,
+    startLine: 20,
+    endLine: 20,
+    urls: [],
+  },
+];
+const quantitativeSpec: ChartSpec = {
+  id: "plan-performance",
+  title: "Plan performance",
+  explanation: "Current and target performance by plan.",
+  points: [
+    ["A very long standard plan label", 12, "Current"],
+    ["A very long standard plan label", 18, "Target"],
+    ["Premium plan", -4, "Current"],
+    ["Premium plan", -2, "Target"],
+    ["Zero plan", 0, "Current"],
+    ["Zero plan", 0, "Target"],
+  ].map(([label, value, series]) => ({
+    label: String(label),
+    value: Number(value),
+    unit: "%",
+    series: String(series),
+    source: {
+      nodeId: "paragraph:20-20",
+      evidence: `${String(label)} ${String(series)} ${String(value)}%`,
+    },
+  })),
 };
 
 describe("extractSourceNodes", () => {
@@ -207,6 +258,247 @@ describe("extractSourceNodes", () => {
 });
 
 describe("provenance validation", () => {
+  it("rejects a chart value not present in its exact source span", () => {
+    const sourceNodes = [
+      {
+        id: "tableCell:4-4",
+        type: "tableCell",
+        text: "Premium | 20%",
+        startLine: 4,
+        endLine: 4,
+        urls: [],
+      },
+    ];
+    const result = validateChartPoint(
+      {
+        label: "Premium",
+        value: 120,
+        unit: "%",
+        source: {
+          nodeId: "tableCell:4-4",
+          evidence: "Premium | 20%",
+        },
+      },
+      sourceNodes,
+    );
+
+    expect(result.valid).toBe(false);
+  });
+
+  it("rejects a chart value embedded inside a different numeric literal", () => {
+    const evidence = "Premium | 120%";
+    const sourceNodes = [
+      {
+        id: "tableCell:5-5",
+        type: "tableCell",
+        text: evidence,
+        startLine: 5,
+        endLine: 5,
+        urls: [],
+      },
+    ];
+
+    expect(
+      validateChartPoint(
+        {
+          label: "Premium",
+          value: 20,
+          unit: "%",
+          source: { nodeId: "tableCell:5-5", evidence },
+        },
+        sourceNodes,
+      ).valid,
+    ).toBe(false);
+  });
+
+  it("normalizes only whitespace when validating a chart point", () => {
+    const evidence = "Net \n revenue | -12.5 $";
+    const sourceNodes = [
+      {
+        id: "tableCell:8-9",
+        type: "tableCell",
+        text: evidence,
+        startLine: 8,
+        endLine: 9,
+        urls: [],
+      },
+    ];
+    const point: ChartPoint = {
+      label: "Net revenue",
+      value: -12.5,
+      unit: "$",
+      source: { nodeId: "tableCell:8-9", evidence },
+    };
+
+    expect(validateChartPoint(point, sourceNodes)).toEqual({ valid: true });
+  });
+
+  it.each([
+    ["sign", { label: "Net", value: -12, unit: "$" }, "Net | 12 $"],
+    ["currency", { label: "Net", value: 12, unit: "$" }, "Net | 12 USD"],
+    ["percentage", { label: "Rate", value: 12, unit: "%" }, "Rate | 12 percent"],
+    [
+      "date",
+      { label: "2026-07-15", value: 12, unit: "%" },
+      "15 July 2026 | 12%",
+    ],
+  ])("does not normalize a chart point's %s", (_case, point, evidence) => {
+    const sourceNodes = [
+      {
+        id: "tableCell:12-12",
+        type: "tableCell",
+        text: evidence,
+        startLine: 12,
+        endLine: 12,
+        urls: [],
+      },
+    ];
+
+    expect(
+      validateChartPoint(
+        {
+          ...point,
+          source: { nodeId: "tableCell:12-12", evidence },
+        },
+        sourceNodes,
+      ).valid,
+    ).toBe(false);
+  });
+
+  it("rejects an empty chart spec", () => {
+    expect(
+      validateChartSpec(
+        {
+          id: "empty-chart",
+          title: "Empty chart",
+          explanation: "There are no values to plot.",
+          points: [],
+        },
+        [],
+      ),
+    ).toEqual({
+      valid: false,
+      error: "Chart spec must include at least one point",
+    });
+  });
+
+  const chartSourceNodes = [
+    {
+      id: "paragraph:16-16",
+      type: "paragraph",
+      text: "Standard 12%; Premium -4%",
+      startLine: 16,
+      endLine: 16,
+      urls: [],
+    },
+  ];
+  const chartSpec: ChartSpec = {
+    id: "plan-mix",
+    title: "Plan mix",
+    explanation: "Premium trails the standard plan.",
+    points: [
+      {
+        label: "Standard",
+        value: 12,
+        unit: "%",
+        series: "Current",
+        source: {
+          nodeId: "paragraph:16-16",
+          evidence: "Standard 12%",
+        },
+      },
+      {
+        label: "Premium",
+        value: -4,
+        unit: "%",
+        series: "Current",
+        source: {
+          nodeId: "paragraph:16-16",
+          evidence: "Premium -4%",
+        },
+      },
+    ],
+  };
+
+  const invalidChartCases: Array<[string, ChartSpec, string]> = [
+    ["blank chart IDs", { ...chartSpec, id: " " }, "Chart ID is required"],
+    [
+      "collision-prone chart IDs",
+      { ...chartSpec, id: "plan mix" },
+      "Chart ID must be SVG-safe",
+    ],
+    [
+      "blank chart titles",
+      { ...chartSpec, title: "\t" },
+      "Chart title is required",
+    ],
+    [
+      "blank chart explanations",
+      { ...chartSpec, explanation: "\n" },
+      "Chart explanation is required",
+    ],
+    [
+      "blank point labels",
+      {
+        ...chartSpec,
+        points: [{ ...chartSpec.points[0], label: " " }],
+      },
+      "points[0]: Chart point label is required",
+    ],
+    [
+      "non-finite point values",
+      {
+        ...chartSpec,
+        points: [{ ...chartSpec.points[0], value: Number.NaN }],
+      },
+      "points[0]: Chart point value must be finite",
+    ],
+    [
+      "blank point units",
+      {
+        ...chartSpec,
+        points: [{ ...chartSpec.points[0], unit: "\t" }],
+      },
+      "points[0]: Chart point unit is required",
+    ],
+    [
+      "blank series names",
+      {
+        ...chartSpec,
+        points: [{ ...chartSpec.points[0], series: " " }],
+      },
+      "points[0]: Chart point series cannot be blank",
+    ],
+  ];
+
+  it.each(invalidChartCases)("rejects %s", (_case, spec, error) => {
+    expect(validateChartSpec(spec, chartSourceNodes)).toEqual({
+      valid: false,
+      error,
+    });
+  });
+
+  it("validates every chart point's exact source span", () => {
+    expect(validateChartSpec(chartSpec, chartSourceNodes)).toEqual({
+      valid: true,
+    });
+    expect(
+      validateChartSpec(
+        {
+          ...chartSpec,
+          points: [
+            chartSpec.points[0],
+            { ...chartSpec.points[1], value: -40 },
+          ],
+        },
+        chartSourceNodes,
+      ),
+    ).toEqual({
+      valid: false,
+      error: "points[1]: Chart point is not present in paragraph:16-16",
+    });
+  });
+
   it("rejects evidence that is absent from an existing source node", () => {
     const result = validateSourceRef(
       {
@@ -452,6 +744,177 @@ describe("process graph vocabulary", () => {
 
     expect(edge).not.toBeNull();
     expect(Number(edge?.[1])).toBeLessThan(Number(edge?.[2]));
+  });
+});
+
+describe("quantitative chart vocabulary", () => {
+  const chartCases = [
+    ["bar-chart", BarChart],
+    ["line-chart", LineChart],
+    ["stacked-bar", StackedBar],
+    ["comparison-chart", ComparisonChart],
+  ] as const;
+
+  it.each(chartCases)(
+    "renders an accessible, source-linked %s with a complete data table",
+    (visualType, Chart) => {
+      const markup = renderToStaticMarkup(
+        <Chart spec={quantitativeSpec} sourceNodes={quantitativeSourceNodes} />,
+      );
+
+      expect(markup).toContain("<svg");
+      expect(markup).toMatch(/<svg[^>]+viewBox="[^"]+"/);
+      expect(markup).toContain('role="img"');
+      expect(markup).toContain("<title ");
+      expect(markup).toContain("<desc ");
+      expect(markup).toContain(quantitativeSpec.title);
+      expect(markup).toContain(quantitativeSpec.explanation);
+      expect(markup).toContain(
+        `data-visual-id="${visualType}-${quantitativeSpec.id}"`,
+      );
+      expect(markup).toContain("<pattern");
+      expect(markup).toContain("<text");
+      expect(markup).toContain("<table");
+      expect(markup).toContain("<caption");
+      expect(markup).toContain("Series");
+      expect(markup).toContain("Value");
+      expect(markup.match(/<tr data-chart-point=/g)).toHaveLength(
+        quantitativeSpec.points.length,
+      );
+      expect(markup).toContain("A very long standard plan label");
+      expect(markup).toContain("Current");
+      expect(markup).toContain("Target");
+      expect(markup).toContain("-4");
+      expect(markup).toContain("0");
+      expect(markup).toContain("%");
+      expect(markup).toContain("Derived from");
+      expect(markup).toContain('href="#source-paragraph:20-20"');
+      expect(markup).toContain(
+        'aria-label="Current, Premium plan: -4 %; derived from paragraph:20-20"',
+      );
+    },
+  );
+
+  it.each(chartCases)("renders no %s for empty data", (_kind, Chart) => {
+    const markup = renderToStaticMarkup(
+      <Chart
+        spec={{ ...quantitativeSpec, points: [] }}
+        sourceNodes={quantitativeSourceNodes}
+      />,
+    );
+
+    expect(markup).toBe("");
+  });
+
+  it("rejects a chart whose plotted value is not grounded", () => {
+    expect(() =>
+      renderToStaticMarkup(
+        <BarChart
+          spec={{
+            ...quantitativeSpec,
+            points: [{ ...quantitativeSpec.points[0], value: 120 }],
+          }}
+          sourceNodes={quantitativeSourceNodes}
+        />,
+      ),
+    ).toThrow(
+      "points[0]: Chart point is not present in paragraph:20-20",
+    );
+  });
+
+  it("places positive, negative, and zero bars around the zero baseline", () => {
+    const markup = renderToStaticMarkup(
+      <BarChart
+        spec={quantitativeSpec}
+        sourceNodes={quantitativeSourceNodes}
+      />,
+    );
+    const baseline = markup.match(/<line[^>]*data-zero-baseline="true"[^>]*>/)?.[0];
+    const positive = markup.match(/<rect[^>]*data-value="12"[^>]*>/)?.[0];
+    const negative = markup.match(/<rect[^>]*data-value="-4"[^>]*>/)?.[0];
+    const zero = markup.match(/<rect[^>]*data-value="0"[^>]*>/)?.[0];
+    const numberAttribute = (element: string | undefined, name: string) =>
+      Number(element?.match(new RegExp(`${name}="([^"]+)"`))?.[1]);
+    const baselineY = numberAttribute(baseline, "y1");
+
+    expect(numberAttribute(baseline, "y2")).toBe(baselineY);
+    expect(numberAttribute(positive, "y")).toBeLessThan(baselineY);
+    expect(
+      numberAttribute(positive, "y") + numberAttribute(positive, "height"),
+    ).toBeCloseTo(baselineY);
+    expect(numberAttribute(negative, "y")).toBeCloseTo(baselineY);
+    expect(numberAttribute(negative, "height")).toBeGreaterThan(0);
+    expect(numberAttribute(zero, "height")).toBe(0);
+  });
+
+  it("draws a distinct line for every series", () => {
+    const markup = renderToStaticMarkup(
+      <LineChart
+        spec={quantitativeSpec}
+        sourceNodes={quantitativeSourceNodes}
+      />,
+    );
+
+    expect(markup.match(/<polyline[^>]*data-series=/g)).toHaveLength(2);
+    expect(markup.match(/data-line-point="true"/g)).toHaveLength(
+      quantitativeSpec.points.length,
+    );
+  });
+
+  it("stacks series by label on both sides of zero", () => {
+    const markup = renderToStaticMarkup(
+      <StackedBar
+        spec={quantitativeSpec}
+        sourceNodes={quantitativeSourceNodes}
+      />,
+    );
+    const segments = [
+      ...markup.matchAll(/<rect[^>]*data-stack-segment="true"[^>]*>/g),
+    ].map(([element]) => element);
+    const xPositions = new Set(
+      segments.map((element) => element.match(/ x="([^"]+)"/)?.[1]),
+    );
+
+    expect(segments).toHaveLength(quantitativeSpec.points.length);
+    expect(xPositions).toHaveLength(3);
+    expect(markup).toContain('data-stack-direction="positive"');
+    expect(markup).toContain('data-stack-direction="negative"');
+  });
+
+  it("uses unique SVG IDs for repeated chart instances", () => {
+    const markup = renderToStaticMarkup(
+      <>
+        <BarChart
+          spec={quantitativeSpec}
+          sourceNodes={quantitativeSourceNodes}
+        />
+        <BarChart
+          spec={quantitativeSpec}
+          sourceNodes={quantitativeSourceNodes}
+        />
+      </>,
+    );
+    const ids = [...markup.matchAll(/\sid="([^"]+)"/g)].map(([, id]) => id);
+
+    expect(ids.length).toBeGreaterThan(0);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("renders deterministic chart geometry", () => {
+    const first = renderToStaticMarkup(
+      <ComparisonChart
+        spec={quantitativeSpec}
+        sourceNodes={quantitativeSourceNodes}
+      />,
+    );
+    const second = renderToStaticMarkup(
+      <ComparisonChart
+        spec={quantitativeSpec}
+        sourceNodes={quantitativeSourceNodes}
+      />,
+    );
+
+    expect(second).toBe(first);
   });
 });
 
