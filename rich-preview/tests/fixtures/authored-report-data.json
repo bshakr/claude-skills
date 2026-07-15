@@ -1,0 +1,76 @@
+{
+  "title": "Five-site rollout decision",
+  "eyebrow": "Authored preview",
+  "lede": "Prepare the launch and ship the grounded rollout.",
+  "status": "Ready for review",
+  "highlights": [
+    {
+      "label": "Decision",
+      "title": "Ship five sites",
+      "body": "Prepare the launch before shipping.",
+      "source": [
+        {
+          "nodeId": "paragraph:3-3",
+          "evidence": "Prepare the launch, then ship 5 sites."
+        }
+      ]
+    }
+  ],
+  "comparisons": [],
+  "timeline": [],
+  "risks": [],
+  "actions": [],
+  "processes": [
+    {
+      "id": "rollout",
+      "title": "Rollout sequence",
+      "explanation": "Prepare before shipping.",
+      "nodes": [
+        {
+          "id": "prepare",
+          "label": "Prepare",
+          "source": {
+            "nodeId": "paragraph:3-3",
+            "evidence": "Prepare the launch, then ship 5 sites."
+          }
+        },
+        {
+          "id": "ship",
+          "label": "Ship",
+          "source": {
+            "nodeId": "paragraph:3-3",
+            "evidence": "Prepare the launch, then ship 5 sites."
+          }
+        }
+      ],
+      "edges": [
+        {
+          "from": "prepare",
+          "to": "ship",
+          "source": {
+            "nodeId": "paragraph:3-3",
+            "evidence": "Prepare the launch, then ship 5 sites."
+          }
+        }
+      ]
+    }
+  ],
+  "charts": [
+    {
+      "id": "sites",
+      "title": "Rollout sites",
+      "explanation": "Five sites are in scope.",
+      "points": [
+        {
+          "label": "ship",
+          "value": 5,
+          "unit": "sites",
+          "source": {
+            "nodeId": "paragraph:3-3",
+            "evidence": "Prepare the launch, then ship 5 sites."
+          }
+        }
+      ]
+    }
+  ]
+}

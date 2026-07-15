@@ -96,7 +96,7 @@ def build_fixture_preview(root: Path) -> Path:
     )
     (preview / "src" / "report.mdx").write_text(
         'import { CompleteDocument } from "./components/editorial"\n\n'
-        "<CompleteDocument {...props} />\n"
+        "<CompleteDocument {...documentProps} />\n"
     )
     (preview / "package.json").write_text(json.dumps(PACKAGE_JSON))
     return preview
@@ -217,7 +217,7 @@ class ValidatePreviewTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             preview = build_fixture_preview(Path(temp_dir))
             (preview / "src/report.mdx").write_text(
-                "<CompleteDocument {...props} />\n<h1>{{TITLE}}</h1>\n"
+                "<CompleteDocument {...documentProps} />\n<h1>{{TITLE}}</h1>\n"
             )
 
             with self.assertRaisesRegex(ValueError, "Unresolved placeholder"):
@@ -241,6 +241,39 @@ class ValidatePreviewTest(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "raw"):
                 validate_preview(preview)
+
+    def test_validate_preview_requires_raw_import_binding_as_report_source(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            preview = build_fixture_preview(Path(temp_dir))
+            (preview / "src/main.tsx").write_text(
+                'import canonicalSource from "./content/source.md?raw";\n'
+                'const source = "fabricated";\n'
+                '<Report manifest={manifest} source={source} />;\n'
+            )
+
+            with patch(
+                "validate_preview.subprocess.run",
+                side_effect=[content_result(), None, None],
+            ):
+                with self.assertRaisesRegex(ValueError, "Raw.*binding"):
+                    validate_preview(preview)
+
+    def test_validate_preview_requires_report_to_forward_document_props(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            preview = build_fixture_preview(Path(temp_dir))
+            (preview / "src/report.mdx").write_text(
+                'import { CompleteDocument } from "./components/editorial"\n\n'
+                "<CompleteDocument />\n"
+            )
+
+            with patch(
+                "validate_preview.subprocess.run",
+                side_effect=[content_result(), None, None],
+            ):
+                with self.assertRaisesRegex(ValueError, "CompleteDocument.*props"):
+                    validate_preview(preview)
 
     def test_validate_preview_requires_exact_package_versions(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

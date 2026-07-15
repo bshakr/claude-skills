@@ -25,7 +25,6 @@ import {
   validateSourceRef,
 } from "./lib/provenance";
 import { extractSourceNodes, sourceCoverage } from "./lib/source";
-import reportData from "./content/report-data.json";
 import Report from "./report.mdx";
 
 const reportManifest = {
@@ -793,10 +792,6 @@ describe("provenance validation", () => {
       valid: false,
       error: "actions[0]: Evidence not found in paragraph:3-3",
     });
-  });
-
-  it("keeps starter data graph-free when the source states no relationship", () => {
-    expect(reportData).not.toHaveProperty("processes");
   });
 });
 
@@ -1720,13 +1715,14 @@ describe("Report", () => {
       <Report
         source={"# Plan\n\nAdd canonical source with init_preview.py.\n"}
         manifest={reportManifest}
+        editorialData={emptyEditorialData}
       />,
     );
 
     expect(markup.indexOf('data-editorial-layer="true"')).toBeLessThan(
       markup.indexOf('data-complete-document="true"'),
     );
-    expect(markup).toContain("Turn the source into a decision-ready brief");
+    expect(markup).toContain(emptyEditorialData.title);
     expect(markup).toContain("Complete document");
   });
 
@@ -1823,11 +1819,12 @@ describe("Report", () => {
     expect(markup).toContain("Grounded source text.");
   });
 
-  it("does not present starter process relationships as sourced facts", () => {
+  it("does not invent process relationships when none are supplied", () => {
     const markup = renderToStaticMarkup(
       <Report
         source={"# Preview\n\nAdd canonical source with init_preview.py.\n"}
         manifest={reportManifest}
+        editorialData={emptyEditorialData}
       />,
     );
 

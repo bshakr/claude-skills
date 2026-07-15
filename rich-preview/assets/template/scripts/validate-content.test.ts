@@ -22,6 +22,38 @@ const emptyEditorial = {
   risks: [],
   actions: [],
 };
+const groundedHighlight = {
+  label: "Decision",
+  title: "Ship",
+  body: "Ship to five sites.",
+  source: [sourceRef],
+};
+const groundedProcess = {
+  id: "rollout",
+  title: "Rollout",
+  explanation: "Ship the rollout.",
+  nodes: [{ id: "ship", label: "Ship", source: sourceRef }],
+  edges: [],
+};
+const groundedChart = {
+  id: "sites",
+  title: "Sites",
+  explanation: "Sites in the plan.",
+  points: [
+    {
+      label: "Ship",
+      value: 5,
+      unit: "sites",
+      source: sourceRef,
+    },
+  ],
+};
+const groundedReportData = {
+  ...emptyEditorial,
+  highlights: [groundedHighlight],
+  processes: [groundedProcess],
+  charts: [groundedChart],
+};
 
 describe("content validation script", () => {
   const roots: string[] = [];
@@ -55,41 +87,7 @@ describe("content validation script", () => {
   }
 
   it("analyzes actual editorial, process, and chart data", async () => {
-    const root = await writePreview({
-      ...emptyEditorial,
-      highlights: [
-        {
-          label: "Decision",
-          title: "Ship",
-          body: "Ship to five sites.",
-          source: [sourceRef],
-        },
-      ],
-      processes: [
-        {
-          id: "rollout",
-          title: "Rollout",
-          explanation: "Ship the rollout.",
-          nodes: [{ id: "ship", label: "Ship", source: sourceRef }],
-          edges: [],
-        },
-      ],
-      charts: [
-        {
-          id: "sites",
-          title: "Sites",
-          explanation: "Sites in the plan.",
-          points: [
-            {
-              label: "Ship",
-              value: 5,
-              unit: "sites",
-              source: sourceRef,
-            },
-          ],
-        },
-      ],
-    });
+    const root = await writePreview(groundedReportData);
 
     await expect(collectContentValidation(root)).resolves.toEqual({
       sourceNodes: 3,
@@ -120,6 +118,98 @@ describe("content validation script", () => {
 
     await expect(collectContentValidation(root)).resolves.toMatchObject({
       visuals: 2,
+      provenanceValid: false,
+    });
+  });
+
+  it.each([
+    [
+      "missing top-level title",
+      (() => {
+        const { title: _title, ...reportData } = groundedReportData;
+        return reportData;
+      })(),
+    ],
+    [
+      "missing editorial body",
+      {
+        ...groundedReportData,
+        highlights: [
+          {
+            label: groundedHighlight.label,
+            title: groundedHighlight.title,
+            source: groundedHighlight.source,
+          },
+        ],
+      },
+    ],
+    [
+      "missing editorial label",
+      {
+        ...groundedReportData,
+        highlights: [
+          {
+            title: groundedHighlight.title,
+            body: groundedHighlight.body,
+            source: groundedHighlight.source,
+          },
+        ],
+      },
+    ],
+    [
+      "invalid risk level",
+      {
+        ...groundedReportData,
+        risks: [
+          {
+            level: "urgent",
+            title: "Delay",
+            body: "Prepare promptly.",
+            source: [sourceRef],
+          },
+        ],
+      },
+    ],
+    [
+      "malformed editorial source array",
+      {
+        ...groundedReportData,
+        highlights: [{ ...groundedHighlight, source: sourceRef }],
+      },
+    ],
+    [
+      "malformed process source",
+      {
+        ...groundedReportData,
+        processes: [
+          {
+            ...groundedProcess,
+            nodes: [
+              {
+                ...groundedProcess.nodes[0],
+                source: [sourceRef],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    [
+      "non-numeric chart value",
+      {
+        ...groundedReportData,
+        charts: [
+          {
+            ...groundedChart,
+            points: [{ ...groundedChart.points[0], value: "5" }],
+          },
+        ],
+      },
+    ],
+  ])("rejects %s", async (_label, reportData) => {
+    const root = await writePreview(reportData);
+
+    await expect(collectContentValidation(root)).resolves.toMatchObject({
       provenanceValid: false,
     });
   });

@@ -107,12 +107,28 @@ def _validate_authored_content(preview: Path) -> None:
     report = (preview / "src/report.mdx").read_text()
     if "<CompleteDocument" not in report:
         raise ValueError("CompleteDocument is required in src/report.mdx")
+    if not re.search(
+        r"<CompleteDocument\b[^>]*\{\s*\.\.\.\s*documentProps\s*\}",
+        report,
+        re.DOTALL,
+    ):
+        raise ValueError("CompleteDocument must receive document props")
 
     main = (preview / "src/main.tsx").read_text()
-    if "source.md?raw" not in main:
+    raw_import = re.search(
+        r"\bimport\s+([A-Za-z_$][\w$]*)\s+from\s+"
+        r"[\"'][^\"']*source\.md\?raw[\"']",
+        main,
+    )
+    if raw_import is None:
         raise ValueError("Canonical source must use a raw source.md?raw import")
-    if not re.search(r"\bsource\s*=\s*\{\s*source\s*\}", main):
-        raise ValueError("Raw canonical source must be passed to the report")
+    binding = re.escape(raw_import.group(1))
+    if not re.search(
+        rf"<Report\b[^>]*\bsource\s*=\s*\{{\s*{binding}\s*\}}",
+        main,
+        re.DOTALL,
+    ):
+        raise ValueError("Raw import binding must be passed to the report")
 
     for relative_path in ("src/report.mdx", "src/content/report-data.json"):
         text = (preview / relative_path).read_text()
