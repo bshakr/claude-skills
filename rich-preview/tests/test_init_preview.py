@@ -20,22 +20,24 @@ class InitPreviewTest(unittest.TestCase):
             (template / "index.html").write_text("<div id='root'></div>")
 
             output = tmp_path / "out"
-            create_preview(source, output, template, "plan")
+            manifest = create_preview(source, output, template, "plan")
+            expected_manifest = {
+                "slug": "plan",
+                "source_filename": source.name,
+                "source_path": str(source.resolve()),
+                "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+            }
 
             self.assertEqual(
                 (output / "src/content/source.md").read_bytes(),
                 source.read_bytes(),
             )
+            self.assertEqual(manifest, expected_manifest)
             manifest_path = output / "src/content/preview-manifest.json"
             self.assertTrue(manifest_path.is_file())
             self.assertEqual(
                 json.loads(manifest_path.read_text()),
-                {
-                    "slug": "plan",
-                    "source_filename": source.name,
-                    "source_path": str(source.resolve()),
-                    "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
-                },
+                expected_manifest,
             )
 
     def test_create_preview_uses_existing_empty_directory(self) -> None:
