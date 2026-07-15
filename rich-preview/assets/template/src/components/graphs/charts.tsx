@@ -55,6 +55,8 @@ const chartLabelMaxLines = 4;
 const legendColumnWidth = 126;
 const legendRowHeight = 24;
 const legendMaxColumns = 4;
+const zeroStackLaneHeight = 40;
+const zeroStackValueOffset = 18;
 
 function chartId(kind: string, spec: ChartSpec): string {
   return `${kind}-${spec.id}`;
@@ -345,6 +347,7 @@ function ChartFrame({
         <svg
           aria-labelledby={`${titleId} ${descriptionId}`}
           role="img"
+          style={{ minWidth: `${width}px` }}
           viewBox={`0 0 ${width} ${height}`}
         >
           <title id={titleId}>{spec.title}</title>
@@ -833,7 +836,9 @@ export function StackedBar({ spec, sourceNodes }: ChartProps) {
               zeroIndex - (zeroPoints.length - 1) / 2;
             const zeroMarkerX = rounded(centerX + zeroCenteredIndex * 14);
             const zeroLabelX = rounded(centerX + barWidth / 2 + 72);
-            const zeroLabelY = rounded(scale.zero + zeroCenteredIndex * 18);
+            const zeroLabelY = rounded(
+              scale.zero + zeroCenteredIndex * zeroStackLaneHeight,
+            );
             const isZero = point.value === 0;
 
             return (
@@ -877,7 +882,7 @@ export function StackedBar({ spec, sourceNodes }: ChartProps) {
                       className="quant-chart__value"
                       textAnchor="start"
                       x={zeroLabelX}
-                      y={rounded(zeroLabelY + 14)}
+                      y={rounded(zeroLabelY + zeroStackValueOffset)}
                     >
                       {valueLiteral(point.value)} {point.unit}
                     </text>

@@ -376,6 +376,9 @@ describe("provenance validation", () => {
   it.each([
     ["separate year and percentage", 20, "Year 2025 20%"],
     ["invalid two-digit space group", 34, "Metric 12 34%"],
+    ["quarter label suffix", 200, "Q1 200%"],
+    ["financial-year label suffix", 200, "FY1 200%"],
+    ["embedded quarter label suffix", 200, "PlanQ1 200%"],
   ])("accepts %s as separate numeric tokens", (_case, value, evidence) => {
     const sourceNodes = [
       {
@@ -404,6 +407,7 @@ describe("provenance validation", () => {
 
   it.each([
     ["valid spaced grouping", 1, "Metric 1 200%"],
+    ["valid spaced grouping trailing group", 200, "Metric 1 200%"],
     ["multi-group spacing", 200, "Metric 1 200 000%"],
     ["non-breaking-space grouping", 1, "Metric 1\u00a0200%"],
     ["Unicode minus", 1, "Metric −1%"],
@@ -1180,6 +1184,9 @@ describe("quantitative chart vocabulary", () => {
     const labels = [
       ...markup.matchAll(/<text[^>]*data-series-label-for="\d+"[^>]*>/g),
     ].map(([element]) => element);
+    const values = [
+      ...markup.matchAll(/<text[^>]*class="quant-chart__value"[^>]*>/g),
+    ].map(([element]) => element);
     const leaders = [
       ...markup.matchAll(/<line[^>]*data-series-leader-for="\d+"[^>]*>/g),
     ];
@@ -1191,12 +1198,24 @@ describe("quantitative chart vocabulary", () => {
     const labelYs = labels
       .map((element) => attribute(element, "y"))
       .sort((left, right) => left - right);
+    const textLanes = [...labels, ...values]
+      .map((element) => {
+        const baseline = attribute(element, "y");
+        return { bottom: baseline + 7, top: baseline - 7 };
+      })
+      .sort((left, right) => left.top - right.top);
 
     expect(new Set(markerPositions)).toHaveLength(zeroStackSpec.points.length);
     expect(leaders).toHaveLength(zeroStackSpec.points.length);
     expect(labels).toHaveLength(zeroStackSpec.points.length);
+    expect(values).toHaveLength(zeroStackSpec.points.length);
     for (let index = 1; index < labelYs.length; index += 1) {
       expect(labelYs[index] - labelYs[index - 1]).toBeGreaterThanOrEqual(16);
+    }
+    for (let index = 1; index < textLanes.length; index += 1) {
+      expect(textLanes[index].top).toBeGreaterThanOrEqual(
+        textLanes[index - 1].bottom,
+      );
     }
   });
 
@@ -1288,6 +1307,7 @@ describe("quantitative chart vocabulary", () => {
       const viewBoxWidth = Number(
         svg.match(/viewBox="0 0 ([^ ]+) [^"]+"/)?.[1],
       );
+      const svgElement = svg.slice(0, svg.indexOf(">") + 1);
       const labelElements = [
         ...svg.matchAll(/<text[^>]*data-chart-label="[^"]+"[^>]*>.*?<\/text>/g),
       ].map(([element]) => element);
@@ -1303,6 +1323,9 @@ describe("quantitative chart vocabulary", () => {
         .sort((left, right) => left.left - right.left);
 
       expect(viewBoxWidth).toBeGreaterThan(1200);
+      expect(svgElement).toContain(
+        `style="min-width:${viewBoxWidth}px"`,
+      );
       expect(labelElements).toHaveLength(wideLabels.length);
       for (const [index, bound] of bounds.entries()) {
         expect(bound.width).toBeLessThanOrEqual(bound.available);

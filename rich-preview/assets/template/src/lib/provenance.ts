@@ -93,7 +93,7 @@ function isDigit(value: string | undefined): boolean {
 
 function spacedGroupRanges(evidence: string): Array<[number, number]> {
   const groupedNumber =
-    /(^|[^\d])([+\-−﹢﹣＋－]?\d{1,3}(?: \d{3})+(?:\.\d+)?)(?=$|[^\d])/g;
+    /(^|[^\p{L}\p{N}])([+\-−﹢﹣＋－]?\d{1,3}(?: \d{3})+(?:\.\d+)?)(?=$|[^\d])/gu;
   return [...evidence.matchAll(groupedNumber)].map((match) => {
     const start = (match.index ?? 0) + match[1].length;
     return [start, start + match[2].length];
