@@ -311,6 +311,68 @@ describe("provenance validation", () => {
     ).toBe(false);
   });
 
+  it.each([
+    ["comma grouping", 1, "Metric 1,200%"],
+    ["underscore grouping", 1, "Metric 1_200%"],
+    ["apostrophe grouping", 1, "Metric 1'200%"],
+    ["curly-apostrophe grouping", 1, "Metric 1’200%"],
+    ["decimal prefix", 1, "Metric 1.25%"],
+    ["decimal suffix", 25, "Metric 1.25%"],
+    ["explicit positive sign", 1, "Metric +1%"],
+    ["different negative sign", 1, "Metric -1%"],
+    ["lost negative-zero sign", -0, "Metric 0%"],
+    ["invented negative-zero sign", 0, "Metric -0%"],
+  ])("rejects a numeric fragment from %s", (_case, value, evidence) => {
+    const sourceNodes = [
+      {
+        id: "tableCell:6-6",
+        type: "tableCell",
+        text: evidence,
+        startLine: 6,
+        endLine: 6,
+        urls: [],
+      },
+    ];
+
+    expect(
+      validateChartPoint(
+        {
+          label: "Metric",
+          value,
+          unit: "%",
+          source: { nodeId: "tableCell:6-6", evidence },
+        },
+        sourceNodes,
+      ).valid,
+    ).toBe(false);
+  });
+
+  it("preserves a literal negative zero", () => {
+    const evidence = "Metric -0%";
+    const sourceNodes = [
+      {
+        id: "tableCell:7-7",
+        type: "tableCell",
+        text: evidence,
+        startLine: 7,
+        endLine: 7,
+        urls: [],
+      },
+    ];
+
+    expect(
+      validateChartPoint(
+        {
+          label: "Metric",
+          value: -0,
+          unit: "%",
+          source: { nodeId: "tableCell:7-7", evidence },
+        },
+        sourceNodes,
+      ),
+    ).toEqual({ valid: true });
+  });
+
   it("normalizes only whitespace when validating a chart point", () => {
     const evidence = "Net \n revenue | -12.5 $";
     const sourceNodes = [
@@ -754,6 +816,78 @@ describe("quantitative chart vocabulary", () => {
     ["stacked-bar", StackedBar],
     ["comparison-chart", ComparisonChart],
   ] as const;
+  const manySeriesEvidence = Array.from(
+    { length: 6 },
+    (_, index) => `Shared plan Series ${index + 1}; value ${index + 1}%`,
+  ).join("; ");
+  const manySeriesSourceNodes = [
+    {
+      id: "paragraph:24-24",
+      type: "paragraph",
+      text: manySeriesEvidence,
+      startLine: 24,
+      endLine: 24,
+      urls: [],
+    },
+  ];
+  const manySeriesSpec: ChartSpec = {
+    id: "many-series",
+    title: "Many series",
+    explanation: "Every series remains visibly distinguishable.",
+    points: Array.from({ length: 6 }, (_, index) => ({
+      label: "Shared plan",
+      value: index + 1,
+      unit: "%",
+      series: `Series ${index + 1}`,
+      source: {
+        nodeId: "paragraph:24-24",
+        evidence: `Shared plan Series ${index + 1}; value ${index + 1}%`,
+      },
+    })),
+  };
+  const longTokenLabel =
+    "ExtremelyLongUnbrokenCategoryIdentifierWithoutAnyWhitespaceAtAll";
+  const manyWordLabel =
+    "This category label contains enough separate words to exceed " +
+    "the safe SVG line limit without colliding";
+  const longLabelEvidence = `${longTokenLabel} 8%; ${manyWordLabel} 9%`;
+  const longLabelSourceNodes = [
+    {
+      id: "paragraph:26-26",
+      type: "paragraph",
+      text: longLabelEvidence,
+      startLine: 26,
+      endLine: 26,
+      urls: [],
+    },
+  ];
+  const longLabelSpec: ChartSpec = {
+    id: "long-labels",
+    title: "Long labels",
+    explanation: "Labels remain readable without clipping.",
+    points: [
+      {
+        label: longTokenLabel,
+        value: 8,
+        unit: "%",
+        series: "Current",
+        source: {
+          nodeId: "paragraph:26-26",
+          evidence: `${longTokenLabel} 8%`,
+        },
+      },
+      {
+        label: manyWordLabel,
+        value: 9,
+        unit: "%",
+        series: "Current",
+        source: {
+          nodeId: "paragraph:26-26",
+          evidence: `${manyWordLabel} 9%`,
+        },
+      },
+    ],
+  };
 
   it.each(chartCases)(
     "renders an accessible, source-linked %s with a complete data table",
@@ -795,6 +929,101 @@ describe("quantitative chart vocabulary", () => {
     },
   );
 
+  it.each(chartCases)(
+    "keeps six series visibly distinguishable in the %s SVG",
+    (_visualType, Chart) => {
+      const markup = renderToStaticMarkup(
+        <Chart spec={manySeriesSpec} sourceNodes={manySeriesSourceNodes} />,
+      );
+      const svg = markup.slice(
+        markup.indexOf("<svg"),
+        markup.indexOf("</svg>") + "</svg>".length,
+      );
+      const patterns = [...svg.matchAll(/<pattern[^>]*>/g)].map(
+        ([element]) => element,
+      );
+      const patternWidths = patterns.map(
+        (element) => element.match(/width="([^"]+)"/)?.[1],
+      );
+      const seriesLabels = [
+        ...svg.matchAll(
+          /<text[^>]*data-series-label-for="(\d+)"[^>]*>([^<]+)<\/text>/g,
+        ),
+      ];
+
+      expect(patterns).toHaveLength(manySeriesSpec.points.length);
+      expect(new Set(patternWidths)).toHaveLength(manySeriesSpec.points.length);
+      expect(seriesLabels).toHaveLength(manySeriesSpec.points.length);
+      for (const [index, point] of manySeriesSpec.points.entries()) {
+        expect(seriesLabels[index]?.[1]).toBe(String(index));
+        expect(seriesLabels[index]?.[2]).toContain(point.series);
+      }
+    },
+  );
+
+  it.each(chartCases)(
+    "hard-wraps and safely constrains long labels in the %s",
+    (_visualType, Chart) => {
+      const markup = renderToStaticMarkup(
+        <Chart spec={longLabelSpec} sourceNodes={longLabelSourceNodes} />,
+      );
+      const svg = markup.slice(
+        markup.indexOf("<svg"),
+        markup.indexOf("</svg>") + "</svg>".length,
+      );
+      const table = markup.slice(
+        markup.indexOf("<table"),
+        markup.indexOf("</table>") + "</table>".length,
+      );
+      const viewBoxHeight = Number(
+        svg.match(/viewBox="0 0 [^ ]+ ([^"]+)"/)?.[1],
+      );
+      const labels = [
+        ...svg.matchAll(
+          /<text[^>]*data-chart-label="([^"]+)"[^>]*>([\s\S]*?)<\/text>/g,
+        ),
+      ];
+
+      expect(viewBoxHeight).toBeGreaterThan(430);
+      expect(labels).toHaveLength(longLabelSpec.points.length);
+      for (const [, fullLabel, contents] of labels) {
+        const lines = [...contents.matchAll(/<tspan[^>]*>([^<]+)<\/tspan>/g)].map(
+          ([, line]) => line,
+        );
+        expect(lines.length).toBeGreaterThan(1);
+        expect(lines.length).toBeLessThanOrEqual(4);
+        expect(lines.every((line) => line.length <= 18)).toBe(true);
+        expect(table).toContain(fullLabel);
+        expect(svg).toContain(`, ${fullLabel}:`);
+      }
+      expect(labels[1]?.[2]).toContain("…");
+    },
+  );
+
+  it("places bar series labels below their wrapped category labels", () => {
+    const markup = renderToStaticMarkup(
+      <BarChart spec={longLabelSpec} sourceNodes={longLabelSourceNodes} />,
+    );
+    const labelElements = [
+      ...markup.matchAll(/<text[^>]*data-chart-label="[^"]+"[^>]*>.*?<\/text>/g),
+    ].map(([element]) => element);
+    const seriesElements = [
+      ...markup.matchAll(/<text[^>]*data-series-label-for="\d+"[^>]*>/g),
+    ].map(([element]) => element);
+
+    expect(labelElements).toHaveLength(longLabelSpec.points.length);
+    expect(seriesElements).toHaveLength(longLabelSpec.points.length);
+    for (const [index, labelElement] of labelElements.entries()) {
+      const labelY = Number(labelElement.match(/ y="([^"]+)"/)?.[1]);
+      const lineCount = [...labelElement.matchAll(/<tspan/g)].length;
+      const lastLabelY = labelY + (lineCount - 1) * 15;
+      const seriesY = Number(
+        seriesElements[index]?.match(/ y="([^"]+)"/)?.[1],
+      );
+      expect(seriesY).toBeGreaterThan(lastLabelY);
+    }
+  });
+
   it.each(chartCases)("renders no %s for empty data", (_kind, Chart) => {
     const markup = renderToStaticMarkup(
       <Chart
@@ -820,6 +1049,44 @@ describe("quantitative chart vocabulary", () => {
     ).toThrow(
       "points[0]: Chart point is not present in paragraph:20-20",
     );
+  });
+
+  it("preserves negative zero in visible and accessible chart values", () => {
+    const evidence = "Loss -0%";
+    const sourceNodes = [
+      {
+        id: "paragraph:22-22",
+        type: "paragraph",
+        text: evidence,
+        startLine: 22,
+        endLine: 22,
+        urls: [],
+      },
+    ];
+    const markup = renderToStaticMarkup(
+      <BarChart
+        spec={{
+          id: "negative-zero",
+          title: "Negative zero",
+          explanation: "The sign remains source-faithful.",
+          points: [
+            {
+              label: "Loss",
+              value: -0,
+              unit: "%",
+              source: { nodeId: "paragraph:22-22", evidence },
+            },
+          ],
+        }}
+        sourceNodes={sourceNodes}
+      />,
+    );
+
+    expect(markup).toContain(
+      'aria-label="Value, Loss: -0 %; derived from paragraph:22-22"',
+    );
+    expect(markup).toContain("<td>-0</td>");
+    expect(markup).toContain(">-0 %</text>");
   });
 
   it("places positive, negative, and zero bars around the zero baseline", () => {

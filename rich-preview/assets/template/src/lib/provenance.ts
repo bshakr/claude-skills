@@ -84,15 +84,13 @@ function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function includesNumericLiteral(evidence: string, value: number): boolean {
-  const literal = escapeRegExp(String(value));
-  return new RegExp(
-    `(?:^|[^0-9.eE+.-])${literal}(?=$|[^0-9.eE+.-])`,
-  ).test(evidence);
+  const literal = Object.is(value, -0) ? "-0" : String(value);
+  const numericToken =
+    /[+-]?(?:\d(?:[\d,_'’ ]*\d)?(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?/g;
+  return [...evidence.matchAll(numericToken)].some(
+    ([candidate]) => candidate === literal,
+  );
 }
 
 export function validateChartPoint(

@@ -37,6 +37,10 @@ type VerticalScale = {
 
 const plotTop = 44;
 const plotBottom = 330;
+const chartLabelY = 358;
+const chartLabelLineHeight = 15;
+const chartLabelMaxLength = 18;
+const chartLabelMaxLines = 4;
 
 function chartId(kind: string, spec: ChartSpec): string {
   return `${kind}-${spec.id}`;
@@ -69,6 +73,10 @@ function sourceNodeIds(spec: ChartSpec): string {
 
 function rounded(value: number): number {
   return Number(value.toFixed(3));
+}
+
+function valueLiteral(value: number): string {
+  return Object.is(value, -0) ? "-0" : String(value);
 }
 
 function verticalScale(
@@ -107,27 +115,42 @@ function PatternDefinitions({
 }) {
   return (
     <defs>
-      {series.map((name, index) => (
-        <pattern
-          data-pattern-series={name}
-          height="8"
-          id={patternId(domId, index)}
-          key={name}
-          patternUnits="userSpaceOnUse"
-          width="8"
-        >
-          <rect
-            className={`quant-chart__pattern-base quant-chart__series-fill-${index % 4}`}
-            height="8"
-            width="8"
-          />
-          {index % 2 === 0 ? (
-            <path className="quant-chart__pattern-mark" d="M -2 8 L 8 -2 M 2 10 L 10 2" />
-          ) : (
-            <circle className="quant-chart__pattern-mark-fill" cx="4" cy="4" r="1.5" />
-          )}
-        </pattern>
-      ))}
+      {series.map((name, index) => {
+        const patternSize = 8 + index;
+        const midpoint = patternSize / 2;
+        return (
+          <pattern
+            data-pattern-series={name}
+            height={patternSize}
+            id={patternId(domId, index)}
+            key={name}
+            patternUnits="userSpaceOnUse"
+            width={patternSize}
+          >
+            <rect
+              className={`quant-chart__pattern-base quant-chart__series-fill-${index % 4}`}
+              height={patternSize}
+              width={patternSize}
+            />
+            {index % 2 === 0 ? (
+              <path
+                className="quant-chart__pattern-mark"
+                d={[
+                  `M -2 ${patternSize} L ${patternSize} -2`,
+                  `M 2 ${patternSize + 2} L ${patternSize + 2} 2`,
+                ].join(" ")}
+              />
+            ) : (
+              <circle
+                className="quant-chart__pattern-mark-fill"
+                cx={midpoint}
+                cy={midpoint}
+                r={1.5 + index / 10}
+              />
+            )}
+          </pattern>
+        );
+      })}
     </defs>
   );
 }
@@ -178,7 +201,7 @@ function DataTable({ spec }: { spec: ChartSpec }) {
             <tr data-chart-point={index} key={`${point.label}-${pointSeries(point)}-${index}`}>
               <th scope="row">{point.label}</th>
               <td>{pointSeries(point)}</td>
-              <td>{point.value}</td>
+              <td>{valueLiteral(point.value)}</td>
               <td>{point.unit}</td>
               <td>
                 <a
@@ -279,19 +302,60 @@ function ChartFrame({
   );
 }
 
-function labelLines(label: string, maxLength = 18): string[] {
-  const words = label.trim().split(/\s+/);
+function labelLines(label: string): string[] {
+  const segments = label
+    .trim()
+    .split(/\s+/)
+    .flatMap((word) => {
+      const characters = Array.from(word);
+      return Array.from(
+        { length: Math.ceil(characters.length / chartLabelMaxLength) },
+        (_, index) =>
+          characters
+            .slice(
+              index * chartLabelMaxLength,
+              (index + 1) * chartLabelMaxLength,
+            )
+            .join(""),
+      );
+    });
   const lines: string[] = [];
 
-  for (const word of words) {
+  for (const segment of segments) {
     const lastLine = lines.at(-1);
-    if (!lastLine || `${lastLine} ${word}`.length > maxLength) {
-      lines.push(word);
+    if (
+      !lastLine ||
+      `${lastLine} ${segment}`.length > chartLabelMaxLength
+    ) {
+      lines.push(segment);
     } else {
-      lines[lines.length - 1] = `${lastLine} ${word}`;
+      lines[lines.length - 1] = `${lastLine} ${segment}`;
     }
   }
-  return lines;
+
+  if (lines.length <= chartLabelMaxLines) {
+    return lines;
+  }
+
+  const visibleLines = lines.slice(0, chartLabelMaxLines);
+  const finalLine = visibleLines[chartLabelMaxLines - 1];
+  visibleLines[chartLabelMaxLines - 1] =
+    `${finalLine.slice(0, chartLabelMaxLength - 1)}…`;
+  return visibleLines;
+}
+
+function chartHeight(labels: string[], includeSeriesLabels = false): number {
+  const lineCount = Math.max(...labels.map((label) => labelLines(label).length));
+  const lastLineY = chartLabelY + (lineCount - 1) * chartLabelLineHeight;
+  return Math.max(430, lastLineY + (includeSeriesLabels ? 50 : 32));
+}
+
+function seriesLabelY(label: string): number {
+  return (
+    chartLabelY +
+    (labelLines(label).length - 1) * chartLabelLineHeight +
+    20
+  );
 }
 
 function SvgLabel({
@@ -303,9 +367,21 @@ function SvgLabel({
   const lines = labelLines(label);
 
   return (
-    <text className={className} textAnchor="middle" x={x} y={y}>
+    <text
+      aria-label={label}
+      className={className}
+      data-chart-label={label}
+      data-label-lines={lines.length}
+      textAnchor="middle"
+      x={x}
+      y={y}
+    >
       {lines.map((line, index) => (
-        <tspan dy={index === 0 ? 0 : 15} key={`${line}-${index}`} x={x}>
+        <tspan
+          dy={index === 0 ? 0 : chartLabelLineHeight}
+          key={`${line}-${index}`}
+          x={x}
+        >
           {line}
         </tspan>
       ))}
@@ -314,7 +390,7 @@ function SvgLabel({
 }
 
 function pointAriaLabel(point: ChartPoint): string {
-  const value = `${point.value} ${point.unit}`;
+  const value = `${valueLiteral(point.value)} ${point.unit}`;
   return `${pointSeries(point)}, ${point.label}: ${value}; derived from ${point.source.nodeId}`;
 }
 
@@ -339,7 +415,10 @@ export function BarChart({ spec, sourceNodes }: ChartProps) {
   }
 
   const width = Math.max(760, spec.points.length * 126 + 110);
-  const height = 430;
+  const height = chartHeight(
+    spec.points.map(({ label }) => label),
+    true,
+  );
   const series = seriesNames(spec.points);
   const scale = verticalScale(spec.points.map(({ value }) => value));
   const plotWidth = width - 110;
@@ -377,7 +456,7 @@ export function BarChart({ spec, sourceNodes }: ChartProps) {
             <rect
               className="quant-chart__bar"
               data-chart-point={index}
-              data-value={point.value}
+              data-value={valueLiteral(point.value)}
               fill={`url(#${patternId(domId, seriesIndex)})`}
               height={barHeight}
               width={rounded(barWidth)}
@@ -390,14 +469,15 @@ export function BarChart({ spec, sourceNodes }: ChartProps) {
               x={centerX}
               y={valueLabelY}
             >
-              {point.value} {point.unit}
+              {valueLiteral(point.value)} {point.unit}
             </text>
-            <SvgLabel label={point.label} x={centerX} y={354} />
+            <SvgLabel label={point.label} x={centerX} y={chartLabelY} />
             <text
               className="quant-chart__series-label"
+              data-series-label-for={index}
               textAnchor="middle"
               x={centerX}
-              y="405"
+              y={seriesLabelY(point.label)}
             >
               {pointSeries(point)}
             </text>
@@ -418,7 +498,7 @@ export function LineChart({ spec, sourceNodes }: ChartProps) {
   const labels = labelNames(spec.points);
   const series = seriesNames(spec.points);
   const width = Math.max(760, labels.length * 210 + 120);
-  const height = 430;
+  const height = chartHeight(labels);
   const scale = verticalScale(spec.points.map(({ value }) => value));
   const labelX = (label: string) => {
     const index = labels.indexOf(label);
@@ -449,6 +529,7 @@ export function LineChart({ spec, sourceNodes }: ChartProps) {
             points={points
               .map((point) => `${labelX(point.label)},${scale.position(point.value)}`)
               .join(" ")}
+            strokeDasharray={`${seriesIndex + 3} ${seriesIndex + 2}`}
           />
         );
       })}
@@ -469,7 +550,7 @@ export function LineChart({ spec, sourceNodes }: ChartProps) {
               cy={y}
               data-chart-point={index}
               data-line-point="true"
-              data-value={point.value}
+              data-value={valueLiteral(point.value)}
               fill={`url(#${patternId(domId, seriesIndex)})`}
               r="7"
             />
@@ -479,13 +560,27 @@ export function LineChart({ spec, sourceNodes }: ChartProps) {
               x={x}
               y={rounded(y - 12 - seriesIndex * 15)}
             >
-              {point.value} {point.unit}
+              {valueLiteral(point.value)} {point.unit}
+            </text>
+            <text
+              className="quant-chart__series-label"
+              data-series-label-for={index}
+              textAnchor="middle"
+              x={x}
+              y={rounded(y + 18 + seriesIndex * 3)}
+            >
+              {pointSeries(point)}
             </text>
           </a>
         );
       })}
       {labels.map((label) => (
-        <SvgLabel key={label} label={label} x={labelX(label)} y={358} />
+        <SvgLabel
+          key={label}
+          label={label}
+          x={labelX(label)}
+          y={chartLabelY}
+        />
       ))}
     </ChartFrame>
   );
@@ -509,7 +604,7 @@ export function StackedBar({ spec, sourceNodes }: ChartProps) {
   });
   const scale = verticalScale(totals);
   const width = Math.max(760, labels.length * 210 + 120);
-  const height = 430;
+  const height = chartHeight(labels);
   const slotWidth = (width - 120) / labels.length;
   const barWidth = Math.min(84, slotWidth * 0.48);
 
@@ -560,7 +655,7 @@ export function StackedBar({ spec, sourceNodes }: ChartProps) {
                   data-chart-point={pointIndex}
                   data-stack-direction={direction}
                   data-stack-segment="true"
-                  data-value={point.value}
+                  data-value={valueLiteral(point.value)}
                   fill={`url(#${patternId(domId, seriesIndex)})`}
                   height={segmentHeight}
                   width={rounded(barWidth)}
@@ -573,12 +668,26 @@ export function StackedBar({ spec, sourceNodes }: ChartProps) {
                   x={centerX}
                   y={rounded(y + segmentHeight / 2 + 4)}
                 >
-                  {point.value} {point.unit}
+                  {valueLiteral(point.value)} {point.unit}
+                </text>
+                <text
+                  className="quant-chart__series-label"
+                  data-series-label-for={pointIndex}
+                  textAnchor="start"
+                  x={rounded(centerX + barWidth / 2 + 8)}
+                  y={rounded(y + segmentHeight / 2 + 4)}
+                >
+                  {pointSeries(point)}
                 </text>
               </a>
             );
           }),
-          <SvgLabel key={`${label}-label`} label={label} x={centerX} y={358} />,
+          <SvgLabel
+            key={`${label}-label`}
+            label={label}
+            x={centerX}
+            y={chartLabelY}
+          />,
         ];
       })}
     </ChartFrame>
@@ -595,7 +704,7 @@ export function ComparisonChart({ spec, sourceNodes }: ChartProps) {
   const labels = labelNames(spec.points);
   const series = seriesNames(spec.points);
   const width = Math.max(760, labels.length * 230 + 120);
-  const height = 430;
+  const height = chartHeight(labels);
   const scale = verticalScale(spec.points.map(({ value }) => value));
   const groupWidth = (width - 120) / labels.length;
   const availableBarWidth = groupWidth * 0.72;
@@ -637,7 +746,7 @@ export function ComparisonChart({ spec, sourceNodes }: ChartProps) {
             <rect
               className="quant-chart__bar quant-chart__comparison-bar"
               data-chart-point={index}
-              data-value={point.value}
+              data-value={valueLiteral(point.value)}
               fill={`url(#${patternId(domId, seriesIndex)})`}
               height={barHeight}
               width={rounded(barWidth)}
@@ -650,7 +759,16 @@ export function ComparisonChart({ spec, sourceNodes }: ChartProps) {
               x={centerX}
               y={valueLabelY}
             >
-              {point.value} {point.unit}
+              {valueLiteral(point.value)} {point.unit}
+            </text>
+            <text
+              className="quant-chart__series-label"
+              data-series-label-for={index}
+              textAnchor="middle"
+              x={centerX}
+              y={rounded(valueLabelY - 15)}
+            >
+              {pointSeries(point)}
             </text>
           </a>
         );
@@ -660,7 +778,7 @@ export function ComparisonChart({ spec, sourceNodes }: ChartProps) {
           key={label}
           label={label}
           x={rounded(70 + index * groupWidth + groupWidth / 2)}
-          y={358}
+          y={chartLabelY}
         />
       ))}
     </ChartFrame>
