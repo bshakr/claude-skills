@@ -309,6 +309,140 @@ p {
   font-weight: 750;
 }
 
+.process-graph {
+  margin: 1.5rem 0;
+  padding: clamp(1rem, 3vw, 1.75rem);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--paper);
+  break-inside: avoid;
+}
+
+.process-graph__heading h3 {
+  margin-bottom: 0.45rem;
+  font-size: 1.25rem;
+}
+
+.process-graph__heading p {
+  max-width: 62ch;
+  margin-bottom: 1.25rem;
+  color: var(--ink-soft);
+}
+
+.process-graph__canvas {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--warm-strong);
+  border-radius: 0.85rem;
+  background:
+    linear-gradient(rgb(95 61 196 / 4%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(95 61 196 / 4%) 1px, transparent 1px),
+    #fffcf7;
+  background-size: 24px 24px;
+}
+
+.process-graph svg {
+  display: block;
+  width: 100%;
+  min-width: 38rem;
+  height: auto;
+  font-family: inherit;
+}
+
+.process-graph__node {
+  fill: var(--purple-pale);
+  stroke: var(--purple-deep);
+  stroke-width: 2.5;
+}
+
+.process-graph__node--decision {
+  fill: var(--warning-surface);
+  stroke: var(--warning);
+}
+
+.process-graph__node--participant {
+  fill: var(--success-surface);
+  stroke: var(--success);
+}
+
+.process-graph__node--dependency {
+  fill: var(--warm);
+  stroke: var(--purple);
+}
+
+.process-graph__edge,
+.process-graph__lifeline {
+  stroke: var(--purple-deep);
+  stroke-width: 2.25;
+}
+
+.process-graph__edge {
+  fill: none;
+}
+
+.process-graph__edges--branch .process-graph__edge {
+  stroke: var(--warning);
+}
+
+.process-graph__edges--dependency .process-graph__edge {
+  stroke: var(--ink-soft);
+  stroke-dasharray: 7 5;
+}
+
+.process-graph__lifeline {
+  stroke: var(--success);
+  stroke-dasharray: 5 5;
+  opacity: 0.6;
+}
+
+.process-graph__arrowhead {
+  fill: var(--purple-deep);
+}
+
+.process-graph--branch-flow .process-graph__arrowhead {
+  fill: var(--warning);
+}
+
+.process-graph--dependency-map .process-graph__arrowhead {
+  fill: var(--ink-soft);
+}
+
+.process-graph__node-label,
+.process-graph__edge-label {
+  fill: var(--ink);
+  font-size: 14px;
+  font-weight: 750;
+  pointer-events: none;
+}
+
+.process-graph__edge-label {
+  paint-order: stroke fill;
+  stroke: #fffcf7;
+  stroke-width: 5px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.process-graph svg a:focus .process-graph__node,
+.process-graph svg a:hover .process-graph__node {
+  stroke-width: 4;
+}
+
+.process-graph svg a:focus .process-graph__edge,
+.process-graph svg a:hover .process-graph__edge {
+  stroke-width: 3.5;
+}
+
+.process-graph__sources {
+  margin-top: 0.9rem;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+}
+
+.process-graph__sources a {
+  font-weight: 750;
+}
+
 .timeline-list,
 .editorial-list {
   margin: 0;

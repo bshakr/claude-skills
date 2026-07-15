@@ -66,5 +66,143 @@
         }
       ]
     }
-  ]
+  ],
+  "processes": {
+    "processFlow": {
+      "id": "preview-initialization",
+      "title": "Preview initialization",
+      "explanation": "Add the canonical source, then initialize the grounded preview.",
+      "nodes": [
+        {
+          "id": "add-source",
+          "label": "Add canonical source",
+          "source": {
+            "nodeId": "paragraph:3-3",
+            "evidence": "Add canonical source"
+          }
+        },
+        {
+          "id": "initialize",
+          "label": "Initialize preview",
+          "source": {
+            "nodeId": "paragraph:3-3",
+            "evidence": "init_preview.py"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "from": "add-source",
+          "to": "initialize",
+          "label": "initialize",
+          "source": {
+            "nodeId": "paragraph:3-3",
+            "evidence": "Add canonical source with init_preview.py."
+          }
+        }
+      ]
+    },
+    "branchFlow": {
+      "id": "preview-source-branch",
+      "title": "Source readiness branch",
+      "explanation": "The canonical source determines when preview initialization can proceed.",
+      "nodes": [
+        {
+          "id": "canonical-source",
+          "label": "Canonical source ready?",
+          "source": {
+            "nodeId": "paragraph:3-3",
+            "evidence": "canonical source"
+          }
+        },
+        {
+          "id": "initialize-preview",
+          "label": "Initialize preview",
+          "source": {
+            "nodeId": "paragraph:3-3",
+            "evidence": "init_preview.py"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "from": "canonical-source",
+          "to": "initialize-preview",
+          "label": "ready",
+          "source": {
+            "nodeId": "paragraph:3-3",
+            "evidence": "Add canonical source with init_preview.py."
+          }
+        }
+      ]
+    },
+    "sequenceFlow": {
+      "id": "preview-command-sequence",
+      "title": "Initialization sequence",
+      "explanation": "The source is supplied to the preview initializer in a fixed sequence.",
+      "nodes": [
+        {
+          "id": "source",
+          "label": "Canonical source",
+          "source": {
+            "nodeId": "paragraph:3-3",
+            "evidence": "canonical source"
+          }
+        },
+        {
+          "id": "initializer",
+          "label": "Preview initializer",
+          "source": {
+            "nodeId": "paragraph:3-3",
+            "evidence": "init_preview.py"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "from": "source",
+          "to": "initializer",
+          "label": "initialize",
+          "source": {
+            "nodeId": "paragraph:3-3",
+            "evidence": "Add canonical source with init_preview.py."
+          }
+        }
+      ]
+    },
+    "dependencyMap": {
+      "id": "preview-dependencies",
+      "title": "Preview dependencies",
+      "explanation": "Preview initialization depends on the canonical source being available.",
+      "nodes": [
+        {
+          "id": "preview",
+          "label": "Initialized preview",
+          "source": {
+            "nodeId": "paragraph:3-3",
+            "evidence": "init_preview.py"
+          }
+        },
+        {
+          "id": "source",
+          "label": "Canonical source",
+          "source": {
+            "nodeId": "paragraph:3-3",
+            "evidence": "canonical source"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "from": "preview",
+          "to": "source",
+          "label": "depends on",
+          "source": {
+            "nodeId": "paragraph:3-3",
+            "evidence": "Add canonical source with init_preview.py."
+          }
+        }
+      ]
+    }
+  }
 }

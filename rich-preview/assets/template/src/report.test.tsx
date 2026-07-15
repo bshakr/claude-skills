@@ -2,7 +2,20 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { CompleteDocument } from "./components/editorial";
+import {
+  BranchFlow,
+  DependencyMap,
+  ProcessFlow,
+  SequenceFlow,
+} from "./components/graphs/processes";
+import {
+  type ProcessSpec,
+  validateEditorialData,
+  validateProcessSpec,
+  validateSourceRef,
+} from "./lib/provenance";
 import { extractSourceNodes, sourceCoverage } from "./lib/source";
+import reportData from "./content/report-data.json";
 import Report from "./report.mdx";
 
 const reportManifest = {
@@ -23,6 +36,71 @@ const emptyEditorialData = {
   timeline: [],
   risks: [],
   actions: [],
+};
+
+const processSource = [
+  "# Release workflow",
+  "",
+  "Draft the proposal, review it, and publish the approved change.",
+  "",
+  "Approval sends accepted changes to release and rejected changes back to drafting.",
+  "",
+  "The client calls the API before the API stores the record.",
+  "",
+  "The dashboard depends on the API, and the API depends on the datastore.",
+  "",
+].join("\n");
+const processSourceNodes = extractSourceNodes(processSource);
+const processSpec: ProcessSpec = {
+  id: "release-workflow",
+  title: "Release workflow",
+  explanation: "A proposal moves from drafting through review to publication.",
+  nodes: [
+    {
+      id: "draft",
+      label: "Draft proposal",
+      source: {
+        nodeId: "paragraph:3-3",
+        evidence: "Draft the proposal",
+      },
+    },
+    {
+      id: "review",
+      label: "Review",
+      source: {
+        nodeId: "paragraph:3-3",
+        evidence: "review it",
+      },
+    },
+    {
+      id: "publish",
+      label: "Publish",
+      source: {
+        nodeId: "paragraph:3-3",
+        evidence: "publish the approved change",
+      },
+    },
+  ],
+  edges: [
+    {
+      from: "draft",
+      to: "review",
+      label: "submit",
+      source: {
+        nodeId: "paragraph:3-3",
+        evidence: "Draft the proposal, review it",
+      },
+    },
+    {
+      from: "review",
+      to: "publish",
+      label: "approve",
+      source: {
+        nodeId: "paragraph:3-3",
+        evidence: "review it, and publish the approved change",
+      },
+    },
+  ],
 };
 
 describe("extractSourceNodes", () => {
@@ -126,6 +204,137 @@ describe("extractSourceNodes", () => {
       firstPass.map((node) => node.id),
     );
   });
+});
+
+describe("provenance validation", () => {
+  it("rejects evidence that is absent from an existing source node", () => {
+    const result = validateSourceRef(
+      {
+        nodeId: "paragraph:3-3",
+        evidence: "invented relationship",
+      },
+      processSourceNodes,
+    );
+
+    expect(result).toEqual({
+      valid: false,
+      error: "Evidence not found in paragraph:3-3",
+    });
+  });
+
+  it("rejects process edges whose endpoints are not declared", () => {
+    const result = validateProcessSpec(
+      {
+        ...processSpec,
+        edges: [
+          {
+            ...processSpec.edges[0],
+            to: "missing-step",
+          },
+        ],
+      },
+      processSourceNodes,
+    );
+
+    expect(result).toEqual({
+      valid: false,
+      error: "Unknown process edge endpoint: draft -> missing-step",
+    });
+  });
+
+  it("validates every editorial item's exact source span", () => {
+    const source = [
+      { nodeId: "paragraph:3-3", evidence: "Draft the proposal" },
+    ];
+    const editorialData = {
+      ...emptyEditorialData,
+      highlights: [
+        { label: "Decision", title: "Draft", body: "Start here.", source },
+      ],
+      comparisons: [
+        { label: "State", before: "Idea", after: "Draft", source },
+      ],
+      timeline: [
+        { label: "First", title: "Draft", body: "Write it.", source },
+      ],
+      risks: [
+        {
+          level: "low" as const,
+          title: "Delay",
+          body: "Start promptly.",
+          source,
+        },
+      ],
+      actions: [{ title: "Draft", body: "Write the proposal.", source }],
+    };
+
+    expect(validateEditorialData(editorialData, processSourceNodes)).toEqual({
+      valid: true,
+    });
+    expect(
+      validateEditorialData(
+        {
+          ...editorialData,
+          actions: [
+            {
+              ...editorialData.actions[0],
+              source: [
+                {
+                  nodeId: "paragraph:3-3",
+                  evidence: "invented action",
+                },
+              ],
+            },
+          ],
+        },
+        processSourceNodes,
+      ),
+    ).toEqual({
+      valid: false,
+      error: "actions[0]: Evidence not found in paragraph:3-3",
+    });
+  });
+
+  it("keeps every starter process grounded in the canonical source", () => {
+    const nodes = extractSourceNodes(
+      "# Preview\n\nAdd canonical source with init_preview.py.\n",
+    );
+
+    for (const spec of Object.values(reportData.processes)) {
+      expect(validateProcessSpec(spec, nodes)).toEqual({ valid: true });
+    }
+  });
+});
+
+describe("process graph vocabulary", () => {
+  const graphCases = [
+    ["process-flow", ProcessFlow],
+    ["branch-flow", BranchFlow],
+    ["sequence-flow", SequenceFlow],
+    ["dependency-map", DependencyMap],
+  ] as const;
+
+  it.each(graphCases)(
+    "renders an accessible, source-linked %s",
+    (visualType, Graph) => {
+      const markup = renderToStaticMarkup(
+        <Graph spec={processSpec} sourceNodes={processSourceNodes} />,
+      );
+
+      expect(markup).toContain("<svg");
+      expect(markup).toMatch(/<svg[^>]+viewBox="[^"]+"/);
+      expect(markup).toContain("<title ");
+      expect(markup).toContain("<desc ");
+      expect(markup).toContain(processSpec.explanation);
+      expect(markup).toContain(
+        `data-visual-id="${visualType}-${processSpec.id}"`,
+      );
+      expect(markup).toContain("Derived from");
+      expect(markup).toContain('href="#source-paragraph:3-3"');
+      expect(markup).toContain('data-node-shape="');
+      expect(markup).toContain("Draft proposal");
+    },
+  );
 });
 
 describe("CompleteDocument", () => {
