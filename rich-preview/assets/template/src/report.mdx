@@ -4,7 +4,11 @@ import { validateEditorialData } from "./lib/provenance"
 import { extractSourceNodes } from "./lib/source"
 import "./styles.css"
 
-export const Report = ({ editorialData = reportData, ...documentProps }) => {
+export const Report = ({
+  editorialData = reportData,
+  children,
+  ...documentProps
+}) => {
   const sourceNodes = extractSourceNodes(documentProps.source ?? "")
   const validation = validateEditorialData(editorialData, sourceNodes)
   const safeEditorialData = validation.valid
@@ -21,6 +25,7 @@ export const Report = ({ editorialData = reportData, ...documentProps }) => {
   return (
     <div className="preview-shell">
       <EditorialLayer data={safeEditorialData} />
+      {children}
       <CompleteDocument {...documentProps} />
     </div>
   )

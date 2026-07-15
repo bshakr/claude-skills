@@ -6,7 +6,11 @@ import {
   type ProcessSpec,
   validateProcessSpec,
 } from "../../lib/provenance";
-import type { SourceNode, SourceRef } from "../../lib/source";
+import {
+  sourceAnchorId,
+  type SourceNode,
+  type SourceRef,
+} from "../../lib/source";
 
 type ProcessGraphProps = {
   spec: ProcessSpec;
@@ -39,7 +43,7 @@ function useGraphDomId(kind: string, spec: ProcessSpec): string {
 }
 
 function sourceHref(ref: SourceRef): string {
-  return `#source-${ref.nodeId}`;
+  return `#${sourceAnchorId(ref.nodeId)}`;
 }
 
 function sourceNodeIds(spec: ProcessSpec): string {

@@ -222,6 +222,21 @@ describe("provenance validation", () => {
     });
   });
 
+  it("rejects whitespace-only evidence", () => {
+    expect(
+      validateSourceRef(
+        {
+          nodeId: "paragraph:3-3",
+          evidence: " ",
+        },
+        processSourceNodes,
+      ),
+    ).toEqual({
+      valid: false,
+      error: "Evidence is required for paragraph:3-3",
+    });
+  });
+
   it("rejects process edges whose endpoints are not declared", () => {
     const result = validateProcessSpec(
       {
@@ -441,6 +456,39 @@ describe("process graph vocabulary", () => {
 });
 
 describe("CompleteDocument", () => {
+  it("anchors every supported formatted source node exactly once", () => {
+    const source = [
+      "# Release plan",
+      "",
+      "Read the [runbook](https://example.com/runbook) before visiting https://status.example.com.",
+      "",
+      "- Keep this item",
+      "",
+      "| Owner | State |",
+      "| --- | --- |",
+      "| Alex | Ready |",
+      "",
+      "```ts",
+      "const ready = true;",
+      "```",
+      "",
+    ].join("\n");
+    const nodes = extractSourceNodes(source);
+    const markup = renderToStaticMarkup(
+      <CompleteDocument source={source} manifest={reportManifest} />,
+    );
+    const ids = [...markup.matchAll(/\sid="([^"]+)"/g)].map(
+      ([, id]) => id,
+    );
+
+    for (const node of nodes) {
+      expect(
+        ids.filter((id) => id === `source-${node.id}`),
+        node.id,
+      ).toHaveLength(1);
+    }
+  });
+
   it("renders the complete canonical source and raw verification", () => {
     const source = "# Plan\n\nFirst paragraph.\n\n- Keep this item\n";
     const manifest = {
@@ -672,5 +720,32 @@ describe("Report", () => {
     expect(markup).not.toContain("data-visual-id");
     expect(markup).not.toContain("Source readiness branch");
     expect(markup).not.toContain("Preview dependencies");
+  });
+
+  it("links graph provenance to unique canonical formatted-source anchors", () => {
+    const markup = renderToStaticMarkup(
+      <Report
+        source={processSource}
+        manifest={reportManifest}
+        editorialData={emptyEditorialData}
+      >
+        <ProcessFlow spec={processSpec} sourceNodes={processSourceNodes} />
+      </Report>,
+    );
+    const hrefTargets = [...markup.matchAll(/href="#([^"]+)"/g)].map(
+      ([, target]) => target,
+    );
+    const elementIds = [...markup.matchAll(/\sid="([^"]+)"/g)].map(
+      ([, id]) => id,
+    );
+
+    expect(markup).toContain('data-visual-id="process-flow-release-workflow"');
+    expect(hrefTargets).toContain("source-paragraph:3-3");
+    for (const target of new Set(hrefTargets)) {
+      expect(elementIds.filter((id) => id === target)).toHaveLength(1);
+    }
+    for (const node of processSourceNodes) {
+      expect(elementIds).toContain(`source-${node.id}`);
+    }
   });
 });

@@ -40,7 +40,7 @@ export function validateSourceRef(
       error: `Source node not found: ${ref?.nodeId ?? "missing"}`,
     };
   }
-  if (!ref.evidence) {
+  if (!ref.evidence?.trim()) {
     return {
       valid: false,
       error: `Evidence is required for ${ref.nodeId}`,

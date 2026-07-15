@@ -3,7 +3,11 @@ import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 
-import { sourceCoverage, type SourceRef } from "../lib/source";
+import {
+  canonicalSourceAnchorPlugin,
+  sourceCoverage,
+  type SourceRef,
+} from "../lib/source";
 
 export type PreviewManifest = {
   slug: string;
@@ -313,7 +317,11 @@ export function CompleteDocument({ source, manifest }: CompleteDocumentProps) {
       <article className="source-document" aria-label="Formatted source">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeRaw, rehypeSanitize]}
+          rehypePlugins={[
+            rehypeRaw,
+            rehypeSanitize,
+            canonicalSourceAnchorPlugin(coverage.nodes),
+          ]}
           components={{
             img: ({ alt }) => (
               <span data-inert-image="true">{alt ?? "Image"}</span>
