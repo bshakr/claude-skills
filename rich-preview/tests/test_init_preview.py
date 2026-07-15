@@ -1,4 +1,5 @@
 import hashlib
+import json
 import sys
 import tempfile
 import unittest
@@ -18,16 +19,60 @@ class InitPreviewTest(unittest.TestCase):
             (template / "src" / "content").mkdir(parents=True)
             (template / "index.html").write_text("<div id='root'></div>")
 
-            manifest = create_preview(source, tmp_path / "out", template, "plan")
+            output = tmp_path / "out"
+            create_preview(source, output, template, "plan")
 
             self.assertEqual(
-                (tmp_path / "out/src/content/source.md").read_bytes(),
+                (output / "src/content/source.md").read_bytes(),
                 source.read_bytes(),
             )
+            manifest_path = output / "src/content/preview-manifest.json"
+            self.assertTrue(manifest_path.is_file())
             self.assertEqual(
-                manifest["source_sha256"],
-                hashlib.sha256(source.read_bytes()).hexdigest(),
+                json.loads(manifest_path.read_text()),
+                {
+                    "slug": "plan",
+                    "source_filename": source.name,
+                    "source_path": str(source.resolve()),
+                    "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+                },
             )
+
+    def test_create_preview_uses_existing_empty_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tmp_path = Path(temp_dir)
+            source = tmp_path / "plan.md"
+            source.write_text("# Plan\n")
+            template = tmp_path / "template"
+            template.mkdir()
+            (template / "index.html").write_text("template")
+            output = tmp_path / "out"
+            output.mkdir()
+
+            try:
+                create_preview(source, output, template, "plan")
+            except FileExistsError as error:
+                self.fail(f"Existing empty directory was not reused: {error}")
+
+            self.assertEqual((output / "index.html").read_text(), "template")
+
+    def test_create_preview_force_uses_existing_empty_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tmp_path = Path(temp_dir)
+            source = tmp_path / "plan.md"
+            source.write_text("# Plan\n")
+            template = tmp_path / "template"
+            template.mkdir()
+            (template / "index.html").write_text("template")
+            output = tmp_path / "out"
+            output.mkdir()
+
+            try:
+                create_preview(source, output, template, "plan", force=True)
+            except FileExistsError as error:
+                self.fail(f"Existing empty directory was not reused: {error}")
+
+            self.assertEqual((output / "index.html").read_text(), "template")
 
     def test_create_preview_rejects_existing_customized_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

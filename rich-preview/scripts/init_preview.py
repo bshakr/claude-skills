@@ -13,8 +13,8 @@ def create_preview(
     force: bool = False,
 ) -> dict[str, object]:
     source_bytes = source.read_bytes()
-    if output.exists() and any(output.iterdir()):
-        if not force:
+    if output.exists():
+        if any(output.iterdir()) and not force:
             raise FileExistsError(f"Preview already exists: {output}")
         shutil.rmtree(output)
     shutil.copytree(template, output)
