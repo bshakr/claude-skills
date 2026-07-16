@@ -1,17 +1,17 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import source from "./content/source.md?raw";
-import Report from "./report.mdx";
+import { App } from "./app";
+import "./styles.css";
 
 const root = document.getElementById("root");
 
 if (!root) {
-  throw new Error("Missing preview root");
+  throw new Error("Missing hub root");
 }
 
 createRoot(root).render(
   <StrictMode>
-    <Report source={source} />
+    <App />
   </StrictMode>,
 );

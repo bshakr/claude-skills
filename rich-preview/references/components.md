@@ -1,10 +1,16 @@
 # Components
 
-Import in `src/report.mdx`:
+This vocabulary is a public API: reports accumulate in the hub and every past report
+keeps importing it. Changes must be additive — new components or new optional props
+only. Never rename, remove, or change the meaning of an existing prop.
+
+Import at the top of a report's `report.mdx` (the `@components` / `@styles` aliases
+resolve into the hub app, so reports never need `../../../src` paths):
 
 ```mdx
-import { Hero, HighlightGrid, ComparisonGrid, Timeline, RiskList, ActionList, CompleteDocument } from "./components/editorial"
-import { Mermaid } from "./components/mermaid"
+import { Hero, HighlightGrid, ComparisonGrid, Timeline, RiskList, ActionList, CompleteDocument } from "@components/editorial"
+import { Mermaid } from "@components/mermaid"
+import "@styles"
 ```
 
 Every component takes plain strings and arrays. Use only facts the source states; omit any component you have no material for.

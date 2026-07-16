@@ -1,30 +1,33 @@
 ---
 name: rich-preview
-description: Use when a completed plan, investigation, summary, or decision memo needs a polished local webpage — an editorial layer of highlights, timelines, risks, and mermaid diagrams over the full source document, served on localhost.
+description: Use when a completed plan, investigation, summary, or decision memo needs a polished local webpage — an editorial layer of highlights, timelines, risks, and mermaid diagrams over the full source — added to a local report hub served on localhost.
 ---
 
 # Rich Preview
 
-Turn a finished Markdown document into a beautiful local web page. You author one MDX
-file directly; the full source is always preserved and rendered underneath the
-editorial layer.
+Turn a finished Markdown document into a beautiful local web page. Reports are added
+to a single hub at `~/.rich-preview` that serves them all from one long-running
+server and shows an index grouped by project. You author one MDX file per report; the
+full source is always preserved and rendered underneath the editorial layer.
 
 ## Workflow
 
 1. Preserve the source. If it lives in the conversation, save it verbatim as a `.md`
    file first. Never rewrite, condense, or reorder it.
-2. Initialize a preview (use absolute paths when the source or output is elsewhere):
+2. Add the report to the hub (use an absolute source path when it is elsewhere):
 
    ```bash
-   python scripts/init_preview.py <source.md> --output <preview-dir>
+   python scripts/add_report.py <source.md>
    ```
 
-   This copies the template, symlinks its shared `node_modules` (installing
-   template dependencies once on first use — pnpm when installed, npm otherwise),
-   and writes your source to `src/content/source.md`. Pass `--force` to replace a
-   non-empty output directory. Previews are disposable build outputs: create them
-   in a temp directory outside any repository and never commit them.
-3. Read `references/components.md`, then overwrite `<preview-dir>/src/report.mdx`:
+   This syncs the hub app (installing dependencies once — pnpm when available, npm
+   otherwise), then creates `~/.rich-preview/content/<project>/<slug>/` with your
+   source, a `meta.json`, and a starter `report.mdx`. It prints the content directory
+   and the report URL. `project` is inferred from the source's git repo (override with
+   `--project`), `slug` from the filename (override with `--slug`); `--force` replaces
+   an existing report.
+3. Read `references/components.md`, then author `report.mdx` in the printed content
+   directory:
    - A `Hero` with the source's real title and a one-line summary.
    - Editorial sections (`HighlightGrid`, `ComparisonGrid`, `Timeline`, `RiskList`,
      `ActionList`) built only from facts the source states. Skip any section the
@@ -33,21 +36,18 @@ editorial layer.
    - Always end with `<CompleteDocument source={source} />`.
 
    Do not invent titles, numbers, owners, or dates that are not in the source.
-4. Validate (runs the production build; fix any error it reports):
+4. Serve the hub (idempotent — reuses the running server if one is up):
 
    ```bash
-   python scripts/validate_preview.py <preview-dir>
+   python scripts/serve_hub.py
    ```
 
-5. Serve it in a persistent session and confirm it is up:
-
-   ```bash
-   python scripts/serve_preview.py <preview-dir> --port <preferred-port>
-   ```
-
-   The server prints the URL and may pick the next free port. Verify HTTP 200 with
-   `curl --fail --silent -o /dev/null -w '%{http_code}\n' <url>`, then hand the URL
-   to the user and keep the server running.
+   Verify the report with
+   `curl --fail --silent -o /dev/null -w '%{http_code}\n' <report-url>`. To build-check
+   every report at once, run `python scripts/validate_hub.py`.
+5. Hand the user the report URL, and mention the index at the hub root
+   (`http://127.0.0.1:4400/`). Reports are plain data under `~/.rich-preview/content/`
+   — never inside a repository, and deleted by removing the folder.
 
 Never report success from a build you did not run, and never replace the complete
 source with an editorial summary.

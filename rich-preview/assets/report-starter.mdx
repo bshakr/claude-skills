@@ -1,6 +1,6 @@
-import { Hero, HighlightGrid, ComparisonGrid, Timeline, RiskList, ActionList, CompleteDocument } from "./components/editorial"
-import { Mermaid } from "./components/mermaid"
-import "./styles.css"
+import { Hero, HighlightGrid, ComparisonGrid, Timeline, RiskList, ActionList, CompleteDocument } from "@components/editorial"
+import { Mermaid } from "@components/mermaid"
+import "@styles"
 
 export const Report = ({ source }) => (
   <div className="preview-shell">
@@ -12,8 +12,7 @@ export const Report = ({ source }) => (
     />
     {/*
       Author editorial sections here from references/components.md.
-      Use only facts the source states. Delete this comment and the Hero
-      placeholders once you have real content, then keep CompleteDocument last.
+      Use only facts the source states, and keep CompleteDocument last.
     */}
     <CompleteDocument source={source} />
   </div>

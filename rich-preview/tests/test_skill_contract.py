@@ -7,7 +7,8 @@ SKILL_ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_DESCRIPTION = (
     "Use when a completed plan, investigation, summary, or decision memo needs a "
     "polished local webpage — an editorial layer of highlights, timelines, risks, "
-    "and mermaid diagrams over the full source document, served on localhost."
+    "and mermaid diagrams over the full source — added to a local report hub served "
+    "on localhost."
 )
 
 
@@ -29,16 +30,16 @@ class SkillContractTests(unittest.TestCase):
         )
         self.assertTrue(EXPECTED_DESCRIPTION.startswith("Use when"))
 
-    def test_workflow_covers_init_author_validate_serve(self) -> None:
+    def test_workflow_covers_add_author_serve(self) -> None:
         required_phrases = (
             "Preserve the source",
-            "scripts/init_preview.py",
+            "scripts/add_report.py",
             "references/components.md",
-            "src/report.mdx",
             "<CompleteDocument source={source} />",
-            "scripts/validate_preview.py",
-            "scripts/serve_preview.py",
-            "HTTP 200",
+            "scripts/serve_hub.py",
+            "scripts/validate_hub.py",
+            "content directory",
+            "index",
         )
 
         for phrase in required_phrases:
@@ -48,10 +49,12 @@ class SkillContractTests(unittest.TestCase):
     def test_referenced_files_exist(self) -> None:
         for relative_path in (
             "references/components.md",
-            "scripts/init_preview.py",
-            "scripts/validate_preview.py",
-            "scripts/serve_preview.py",
+            "scripts/add_report.py",
+            "scripts/serve_hub.py",
+            "scripts/validate_hub.py",
+            "scripts/package_manager.py",
             "agents/openai.yaml",
+            "assets/report-starter.mdx",
         ):
             with self.subTest(path=relative_path):
                 self.assertTrue((SKILL_ROOT / relative_path).is_file())
@@ -59,9 +62,14 @@ class SkillContractTests(unittest.TestCase):
     def test_components_reference_documents_the_vocabulary(self) -> None:
         contract = (SKILL_ROOT / "references/components.md").read_text()
         required_phrases = (
+            "@components/editorial",
+            "@styles",
+            "additive",
             "Hero",
             "HighlightGrid",
             "ComparisonGrid",
+            "beforeDetail",
+            "afterDetail",
             "Timeline",
             "RiskList",
             "ActionList",
