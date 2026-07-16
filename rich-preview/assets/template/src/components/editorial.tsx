@@ -23,38 +23,107 @@ const CHECK_MARK: Record<CheckItem["state"], string> = {
   blocked: "✗",
 };
 
-export function PrintButton() {
+export function PrintButton({ className = "print-button" }: { className?: string }) {
   return (
-    <button className="print-button" type="button" onClick={() => window.print()}>
+    <button className={className} type="button" onClick={() => window.print()}>
       Print or save as PDF
     </button>
   );
 }
+
+type HeroVariant = "banner" | "band" | "masthead" | "edge" | "poster";
 
 export function Hero({
   title,
   eyebrow,
   lede,
   status,
+  variant = "band",
+  meta,
 }: {
   title: string;
   eyebrow: string;
   lede: string;
   status?: string;
+  variant?: HeroVariant;
+  meta?: string;
 }) {
+  const statusChip = status ? (
+    <p className="status" data-status={status}>
+      {status}
+    </p>
+  ) : null;
+
+  if (variant === "poster") {
+    return (
+      <header className="editorial-hero editorial-hero--poster">
+        <div className="editorial-hero__topline">
+          <p className="eyebrow">{eyebrow}</p>
+          {statusChip}
+        </div>
+        <h1>{title}</h1>
+        <p className="lede">{lede}</p>
+        <PrintButton />
+      </header>
+    );
+  }
+
+  if (variant === "band") {
+    return (
+      <header className="editorial-hero editorial-hero--band">
+        <div className="editorial-hero__topline">
+          <p className="eyebrow">{eyebrow}</p>
+          {statusChip}
+        </div>
+        <h1>{title}</h1>
+        <p className="lede">{lede}</p>
+        <PrintButton className="hero-btn hero-btn--text" />
+      </header>
+    );
+  }
+
+  if (variant === "masthead") {
+    return (
+      <header className="editorial-hero editorial-hero--masthead">
+        <div className="editorial-hero__rule editorial-hero__rule--top">
+          <p className="eyebrow">{eyebrow}</p>
+          {status ? <span className="hero-status-text">{status}</span> : null}
+        </div>
+        <h1>{title}</h1>
+        <p className="lede">{lede}</p>
+        <div className="editorial-hero__rule editorial-hero__rule--bottom">
+          <span className="hero-meta">{meta}</span>
+          <PrintButton className="hero-btn hero-btn--link" />
+        </div>
+      </header>
+    );
+  }
+
+  if (variant === "edge") {
+    return (
+      <header className="editorial-hero editorial-hero--edge">
+        <div className="editorial-hero__topline editorial-hero__topline--inline">
+          <p className="eyebrow">{eyebrow}</p>
+          {statusChip}
+        </div>
+        <h1>{title}</h1>
+        <p className="lede">{lede}</p>
+        <div className="editorial-hero__foot">
+          <PrintButton className="hero-btn hero-btn--ghost" />
+        </div>
+      </header>
+    );
+  }
+
   return (
-    <header className="editorial-hero">
+    <header className="editorial-hero editorial-hero--banner">
       <div className="editorial-hero__topline">
         <p className="eyebrow">{eyebrow}</p>
-        {status ? (
-          <p className="status" data-status={status}>
-            {status}
-          </p>
-        ) : null}
+        <PrintButton className="hero-btn hero-btn--ghost" />
       </div>
       <h1>{title}</h1>
       <p className="lede">{lede}</p>
-      <PrintButton />
+      {statusChip}
     </header>
   );
 }

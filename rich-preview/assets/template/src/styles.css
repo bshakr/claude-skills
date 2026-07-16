@@ -97,35 +97,12 @@ p {
   padding-block: clamp(1rem, 4vw, 3.5rem) 4rem;
 }
 
-.editorial-hero,
 .editorial-section,
 .complete-document {
   border: 1px solid rgb(66 34 143 / 12%);
   border-radius: 1.5rem;
   background: rgb(255 253 249 / 94%);
   box-shadow: var(--shadow);
-}
-
-.editorial-hero {
-  position: relative;
-  overflow: hidden;
-  padding: clamp(2rem, 6vw, 5rem);
-  color: #fff;
-  border: none;
-  background:
-    linear-gradient(135deg, rgb(255 255 255 / 10%), transparent 55%),
-    var(--purple-deep);
-}
-
-.editorial-hero::after {
-  position: absolute;
-  right: -5rem;
-  bottom: -9rem;
-  width: 22rem;
-  height: 22rem;
-  border: 1px solid rgb(255 255 255 / 18%);
-  border-radius: 50%;
-  content: "";
 }
 
 .editorial-hero__topline,
@@ -145,18 +122,6 @@ p {
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-}
-
-.editorial-hero .eyebrow {
-  color: #ddd0ff;
-}
-
-.editorial-hero h1 {
-  max-width: min(18ch, 100%);
-  margin-block: 0.85rem 1.25rem;
-  font-size: clamp(2.2rem, 5.5vw, 4.75rem);
-  letter-spacing: -0.045em;
-  overflow-wrap: break-word;
 }
 
 .lede {
@@ -190,6 +155,282 @@ p {
 .status[data-status*="risk" i] {
   color: #ffe7e4;
   background: rgb(157 43 53 / 65%);
+}
+
+/* ============================================================
+   Hero variants — banner (default) · band · masthead · edge · poster
+   ============================================================ */
+
+/* Text/ghost print actions for the non-poster variants; hidden in print. */
+.hero-btn {
+  position: relative;
+  z-index: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.hero-btn--ghost {
+  padding: 0.5rem 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  color: var(--purple-deep);
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.hero-btn--ghost:hover {
+  border-color: var(--purple-pale);
+  background: var(--purple-pale);
+}
+
+.hero-btn--text {
+  padding: 0.3rem 0;
+  border: none;
+  color: #fff;
+  background: none;
+  font-size: 0.85rem;
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 0.09em;
+}
+
+.hero-btn--text:hover {
+  color: var(--purple-pale);
+}
+
+.hero-btn--link {
+  padding: 0;
+  border: none;
+  color: var(--purple-deep);
+  background: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 0.09em;
+}
+
+.hero-btn--link:hover {
+  color: var(--purple);
+}
+
+/* ---- Banner (default): quiet, no fill, ink title ---- */
+.editorial-hero--banner {
+  padding: 0.5rem 0;
+}
+
+.editorial-hero--banner .editorial-hero__topline {
+  margin-bottom: 1.1rem;
+}
+
+.editorial-hero--banner .eyebrow {
+  margin: 0;
+  color: var(--purple);
+}
+
+.editorial-hero--banner h1 {
+  max-width: 22ch;
+  margin: 0 0 1rem;
+  font-size: clamp(1.85rem, 4.5vw, 2.25rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.editorial-hero--banner .lede {
+  margin: 0 0 1.5rem;
+  color: var(--ink-soft);
+  font-size: clamp(1.02rem, 2vw, 1.12rem);
+}
+
+.editorial-hero--banner .status {
+  border: 1px solid var(--line);
+  color: var(--success);
+  background: transparent;
+}
+
+/* ---- Band: purple as accent, ~40% height ---- */
+.editorial-hero--band {
+  position: relative;
+  padding: 1.6rem 2rem;
+  border-radius: 1.1rem;
+  color: #fff;
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 10%), transparent 55%),
+    var(--purple-deep);
+  box-shadow: var(--shadow);
+}
+
+.editorial-hero--band .editorial-hero__topline {
+  margin-bottom: 0.6rem;
+}
+
+.editorial-hero--band .eyebrow {
+  margin: 0;
+  color: #ddd0ff;
+}
+
+.editorial-hero--band h1 {
+  max-width: 24ch;
+  margin: 0 0 0.55rem;
+  font-size: clamp(1.6rem, 3.8vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.editorial-hero--band .lede {
+  max-width: 54rem;
+  margin: 0 0 1rem;
+  color: #eee8ff;
+  font-size: clamp(0.98rem, 2vw, 1.02rem);
+}
+
+/* ---- Masthead: editorial hairline rules, italic lede ---- */
+.editorial-hero--masthead {
+  padding: 0.5rem 0;
+}
+
+.editorial-hero__rule {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.editorial-hero__rule--top {
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--ink);
+}
+
+.editorial-hero__rule--bottom {
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--line);
+}
+
+.editorial-hero--masthead .eyebrow {
+  margin: 0;
+  color: var(--ink);
+}
+
+.hero-status-text {
+  color: var(--success);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.editorial-hero--masthead h1 {
+  max-width: 20ch;
+  margin: 1.4rem 0 0.9rem;
+  font-size: clamp(2rem, 5vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+}
+
+.editorial-hero--masthead .lede {
+  max-width: 50rem;
+  margin: 0 0 1.4rem;
+  color: var(--ink-soft);
+  font-size: clamp(1.02rem, 2vw, 1.12rem);
+  font-style: italic;
+}
+
+.hero-meta {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+/* ---- Edge: paper block with 4px purple left edge ---- */
+.editorial-hero--edge {
+  position: relative;
+  padding: 1.7rem 1.9rem 1.5rem;
+  border: 1px solid rgb(66 34 143 / 12%);
+  border-left: 4px solid var(--purple);
+  border-radius: 0.4rem 1rem 1rem 0.4rem;
+  background: rgb(255 253 249 / 94%);
+  box-shadow: var(--shadow);
+}
+
+.editorial-hero__topline--inline {
+  justify-content: flex-start;
+  gap: 0.9rem;
+  margin-bottom: 0.9rem;
+}
+
+.editorial-hero--edge .eyebrow {
+  margin: 0;
+  color: var(--purple);
+}
+
+.editorial-hero--edge h1 {
+  max-width: 22ch;
+  margin: 0 0 0.85rem;
+  font-size: clamp(1.85rem, 4.5vw, 2.25rem);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.editorial-hero--edge .lede {
+  max-width: 52rem;
+  margin: 0 0 1.2rem;
+  padding-bottom: 1.2rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: clamp(1rem, 2vw, 1.1rem);
+}
+
+.editorial-hero--edge .status {
+  border: none;
+  color: var(--success);
+  background: var(--success-surface);
+}
+
+.editorial-hero__foot {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ---- Poster: the original flagship purple hero ---- */
+.editorial-hero--poster {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(2rem, 6vw, 5rem);
+  color: #fff;
+  border-radius: 1.5rem;
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 10%), transparent 55%),
+    var(--purple-deep);
+  box-shadow: var(--shadow);
+}
+
+.editorial-hero--poster::after {
+  position: absolute;
+  right: -5rem;
+  bottom: -9rem;
+  width: 22rem;
+  height: 22rem;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 50%;
+  content: "";
+}
+
+.editorial-hero--poster .eyebrow {
+  color: #ddd0ff;
+}
+
+.editorial-hero--poster h1 {
+  max-width: min(18ch, 100%);
+  margin-block: 0.85rem 1.25rem;
+  font-size: clamp(2.2rem, 5.5vw, 4.75rem);
+  letter-spacing: -0.045em;
+  overflow-wrap: break-word;
 }
 
 .print-button {
@@ -985,13 +1226,16 @@ p {
     padding-block: 0.5rem 2rem;
   }
 
-  .editorial-hero,
+  .editorial-hero--band,
+  .editorial-hero--edge,
+  .editorial-hero--poster,
   .editorial-section,
   .complete-document {
     border-radius: 1rem;
   }
 
   .editorial-hero__topline,
+  .editorial-hero__rule,
   .section-heading,
   .risk-item {
     align-items: flex-start;
@@ -1021,7 +1265,9 @@ p {
     padding: 0;
   }
 
-  .editorial-hero,
+  .editorial-hero--banner,
+  .editorial-hero--masthead,
+  .editorial-hero--edge,
   .editorial-section,
   .complete-document {
     border-color: #bbb;
@@ -1030,13 +1276,15 @@ p {
     box-shadow: none;
   }
 
-  .editorial-hero {
+  .editorial-hero--band,
+  .editorial-hero--poster {
     color: #fff;
     background: var(--purple-deep);
     print-color-adjust: exact;
   }
 
-  .print-button {
+  .print-button,
+  .hero-btn {
     display: none;
   }
 

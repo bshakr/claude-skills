@@ -28,6 +28,14 @@ Top of the page. `status` is optional (a short badge like "Shipped" or "Draft").
 />
 ```
 
+`variant` (optional) picks the header treatment:
+
+- `"band"` — **default**. Compact purple band; keeps the brand colour without the poster bulk.
+- `"banner"` — quiet, unfilled header with an ink title and ghost print button; the no-fill choice for the most restrained pages.
+- `"masthead"` — hairline rules with an italic lede; investigations and briefs that want editorial character. Optional `meta` string sets the small label on the bottom rule.
+- `"edge"` — paper block with a purple left edge; a premium document header.
+- `"poster"` — the tall flagship purple hero; launch-y or flagship pages.
+
 ## HighlightGrid
 
 Cards for the key findings or decisions. `kicker`/`title` are optional overrides.
