@@ -273,14 +273,19 @@ p {
   align-items: start;
 }
 
+.comparison-card {
+  min-width: 0;
+}
+
 .comparison-card dl {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.85rem;
   margin: 0;
 }
 
 .comparison-side {
+  min-width: 0;
   padding: 1rem 1.1rem;
   border-radius: 0.75rem;
   background: var(--warm);
@@ -307,8 +312,10 @@ p {
 }
 
 .wireframe {
-  margin: 0.7rem 0 0;
+  box-sizing: border-box;
+  width: 100%;
   max-width: 100%;
+  margin: 0.7rem 0 0;
   overflow-x: auto;
   padding: 0.85rem 1rem;
   border-radius: 0.55rem;
