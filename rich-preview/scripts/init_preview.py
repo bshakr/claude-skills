@@ -3,12 +3,14 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from package_manager import install_command, package_manager
+
 
 def ensure_template_modules(template: Path) -> Path:
     modules = template / "node_modules"
     if not modules.is_dir():
         print(f"Installing template dependencies in {template} (one-time)")
-        subprocess.run(["npm", "ci"], cwd=template, check=True)
+        subprocess.run(install_command(package_manager()), cwd=template, check=True)
     return modules
 
 

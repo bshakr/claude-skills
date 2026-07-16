@@ -19,9 +19,11 @@ editorial layer.
    python scripts/init_preview.py <source.md> --output <preview-dir>
    ```
 
-   This copies the template, symlinks its shared `node_modules` (running `npm ci`
-   in the template once on first use), and writes your source to
-   `src/content/source.md`. Pass `--force` to replace a non-empty output directory.
+   This copies the template, symlinks its shared `node_modules` (installing
+   template dependencies once on first use — pnpm when installed, npm otherwise),
+   and writes your source to `src/content/source.md`. Pass `--force` to replace a
+   non-empty output directory. Previews are disposable build outputs: create them
+   in a temp directory outside any repository and never commit them.
 3. Read `references/components.md`, then overwrite `<preview-dir>/src/report.mdx`:
    - A `Hero` with the source's real title and a one-line summary.
    - Editorial sections (`HighlightGrid`, `ComparisonGrid`, `Timeline`, `RiskList`,

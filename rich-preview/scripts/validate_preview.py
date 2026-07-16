@@ -2,9 +2,11 @@ import argparse
 import subprocess
 from pathlib import Path
 
+from package_manager import package_manager
+
 
 def validate_preview(preview: Path) -> None:
-    subprocess.run(["npm", "run", "build"], cwd=Path(preview), check=True)
+    subprocess.run([package_manager(), "run", "build"], cwd=Path(preview), check=True)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ import socket
 import subprocess
 from pathlib import Path
 
+from package_manager import package_manager
 
 LOOPBACK_HOST = "127.0.0.1"
 
@@ -33,7 +34,7 @@ def serve_preview(preview: Path, preferred: int | None = None) -> int:
     print(f"http://{LOOPBACK_HOST}:{port}/", flush=True)
     subprocess.run(
         [
-            "npm",
+            package_manager(),
             "run",
             "dev",
             "--",

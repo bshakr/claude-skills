@@ -45,6 +45,7 @@ class ServePreviewTest(unittest.TestCase):
 
             with (
                 patch("serve_preview.find_available_port", return_value=4174),
+                patch("serve_preview.package_manager", return_value="npm"),
                 patch(
                     "serve_preview.subprocess.run",
                     side_effect=assert_url_was_printed,

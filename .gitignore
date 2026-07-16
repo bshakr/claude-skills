@@ -3,6 +3,7 @@
 .rich-preview/
 .superpowers/
 node_modules/
+pnpm-lock.yaml
 dist/
 *.tsbuildinfo
 __pycache__/
