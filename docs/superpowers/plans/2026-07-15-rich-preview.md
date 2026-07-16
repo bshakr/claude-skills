@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Work only in `/Users/bass/code/agent-skills-worktrees/rich-preview` on branch `no-ticket/rich-preview-skill`.
+- Work only in a dedicated `rich-preview` git worktree on branch `no-ticket/rich-preview-skill`.
 - Keep `SKILL.md` portable across Claude Code, Codex, and other Agent Skills-compatible harnesses; harness-specific metadata belongs only in `agents/openai.yaml`.
 - The generated presentation is additive: the byte-for-byte canonical source, full formatted document, raw verification block, SHA-256 digest, and 100% coverage result are mandatory.
 - A generated node, edge, value, unit, sign, date, label, or conclusion must carry an exact source span and stable source-node ID.
@@ -77,8 +77,8 @@
 Run:
 
 ```bash
-python /Users/bass/.codex/skills/.system/skill-creator/scripts/init_skill.py rich-preview \
-  --path /Users/bass/code/agent-skills-worktrees/rich-preview \
+python "${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/init_skill.py" rich-preview \
+  --path "$(pwd)" \
   --resources scripts,references,assets \
   --interface display_name='Rich Preview' \
   --interface short_description='Turn plans and summaries into polished webpages' \
@@ -738,7 +738,7 @@ Run:
 
 ```bash
 python -m unittest discover -s rich-preview/tests -p 'test_skill_contract.py' -v
-python /Users/bass/.codex/skills/.system/skill-creator/scripts/quick_validate.py rich-preview
+python "${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py" rich-preview
 ```
 
 If `skills-ref` is installed, also run `skills-ref validate ./rich-preview`.
@@ -829,7 +829,7 @@ Run:
 ```bash
 python -m unittest discover -s rich-preview/tests -p 'test_*.py' -v
 cd rich-preview/assets/template && npm test -- --run src/report.test.tsx && npm run build
-python /Users/bass/.codex/skills/.system/skill-creator/scripts/quick_validate.py rich-preview
+python "${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py" rich-preview
 git diff --check
 ```
 
@@ -862,8 +862,8 @@ Run `ls -ld` on both destinations. If absent:
 
 ```bash
 mkdir -p ~/.claude/skills ~/.codex/skills
-ln -s /Users/bass/code/agent-skills-worktrees/rich-preview/rich-preview ~/.claude/skills/rich-preview
-ln -s /Users/bass/code/agent-skills-worktrees/rich-preview/rich-preview ~/.codex/skills/rich-preview
+ln -s "$(pwd)/rich-preview" ~/.claude/skills/rich-preview
+ln -s "$(pwd)/rich-preview" ~/.codex/skills/rich-preview
 ```
 
 If either path exists, verify it already resolves to this worktree; do not replace another installation silently.
