@@ -3,7 +3,13 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 type Highlight = { label: string; title: string; body: string };
-type Comparison = { label: string; before: string; after: string };
+type Comparison = {
+  label: string;
+  before: string;
+  after: string;
+  beforeDetail?: string;
+  afterDetail?: string;
+};
 type TimelineEntry = { label: string; title: string; body: string };
 type Risk = { level: "low" | "medium" | "high"; title: string; body: string };
 type Action = { title: string; body: string };
@@ -114,13 +120,19 @@ export function ComparisonGrid({
           <article className="editorial-card comparison-card" key={index}>
             <p className="card-label">{item.label}</p>
             <dl>
-              <div>
+              <div className="comparison-side comparison-side--before">
                 <dt>Before</dt>
                 <dd>{item.before}</dd>
+                {item.beforeDetail ? (
+                  <pre className="wireframe">{item.beforeDetail}</pre>
+                ) : null}
               </div>
-              <div>
+              <div className="comparison-side comparison-side--after">
                 <dt>After</dt>
                 <dd>{item.after}</dd>
+                {item.afterDetail ? (
+                  <pre className="wireframe">{item.afterDetail}</pre>
+                ) : null}
               </div>
             </dl>
           </article>

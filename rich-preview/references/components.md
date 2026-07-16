@@ -35,11 +35,27 @@ Cards for the key findings or decisions. `kicker` and `title` are optional overr
 
 ## ComparisonGrid
 
-Before/after pairs.
+Before/after pairs. `before`/`after` are one-line summaries. Optional
+`beforeDetail`/`afterDetail` render as monospace panels beneath the summary — use
+them to carry a wireframe, exact UI copy, or a config diff verbatim from the source
+instead of paraphrasing it away. Include a detail only for the side the source
+actually shows one for.
 
 ```mdx
 <ComparisonGrid items={[
-  { label: "Overtime attribution", before: "Counted on both types", after: "Counted once" },
+  { label: "Approve button", before: "[Approve]", after: "[Approve & submit to HMRC]" },
+  {
+    label: "Pay run detail page",
+    before: "Plain approve button, no submission context.",
+    after: "Info banner spells out that approving submits RTI and generates BACS.",
+    beforeDetail: `┌─ Pay run detail ─────────────┐
+│ ← All pay runs      [Approve] │
+└──────────────────────────────┘`,
+    afterDetail: `┌─ Pay run detail ─────────────────────────┐
+│ ← All pay runs  [Approve & submit to HMRC] │
+│ ℹ Approving submits RTI and generates BACS │
+└────────────────────────────────────────────┘`,
+  },
 ]} />
 ```
 

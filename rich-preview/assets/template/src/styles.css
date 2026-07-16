@@ -152,10 +152,11 @@ p {
 }
 
 .editorial-hero h1 {
-  max-width: 15ch;
+  max-width: min(18ch, 100%);
   margin-block: 0.85rem 1.25rem;
-  font-size: clamp(2.4rem, 7vw, 5.75rem);
-  letter-spacing: -0.055em;
+  font-size: clamp(2.2rem, 5.5vw, 4.75rem);
+  letter-spacing: -0.045em;
+  overflow-wrap: break-word;
 }
 
 .lede {
@@ -267,33 +268,57 @@ p {
   border-top: 0.3rem solid var(--purple);
 }
 
-.comparison-card dl {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+.comparison-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr));
+  align-items: start;
 }
 
-.comparison-card dl > div {
-  padding: 1rem;
+.comparison-card dl {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+  margin: 0;
+}
+
+.comparison-side {
+  padding: 1rem 1.1rem;
   border-radius: 0.75rem;
   background: var(--warm);
 }
 
-.comparison-card dl > div:last-child {
+.comparison-side--after {
   background: var(--purple-pale);
 }
 
 .comparison-card dt {
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.4rem;
   color: var(--ink-soft);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 800;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .comparison-card dd {
-  margin-bottom: 0;
-  font-weight: 700;
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.wireframe {
+  margin: 0.7rem 0 0;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0.85rem 1rem;
+  border-radius: 0.55rem;
+  background: #2b2337;
+  color: #f3ecff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  white-space: pre;
+  break-inside: avoid;
 }
 
 .mermaid-figure {
@@ -566,10 +591,17 @@ p {
   .editorial-card,
   .mermaid-figure,
   .timeline-item,
+  .wireframe,
   .source-document pre,
   .source-document table,
   .source-verification {
     break-inside: avoid;
+  }
+
+  .wireframe {
+    border: 1px solid #bbb;
+    background: #fff;
+    color: #000;
   }
 
   .complete-document {
