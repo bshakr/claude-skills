@@ -1,84 +1,12 @@
+import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
-import rehypeRaw from "rehype-raw";
-import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 
-import {
-  canonicalSourceAnchorPlugin,
-  extractSourceAnchorModel,
-  sourceCoverage,
-  type SourceRef,
-} from "../lib/source";
-
-export type PreviewManifest = {
-  slug: string;
-  source_filename: string;
-  source_path: string;
-  source_sha256: string;
-};
-
-export type EditorialData = {
-  title: string;
-  eyebrow: string;
-  lede: string;
-  status: string;
-  highlights: Array<{
-    label: string;
-    title: string;
-    body: string;
-    source: SourceRef[];
-  }>;
-  comparisons: Array<{
-    label: string;
-    before: string;
-    after: string;
-    source: SourceRef[];
-  }>;
-  timeline: Array<{
-    label: string;
-    title: string;
-    body: string;
-    source: SourceRef[];
-  }>;
-  risks: Array<{
-    level: "low" | "medium" | "high";
-    title: string;
-    body: string;
-    source: SourceRef[];
-  }>;
-  actions: Array<{
-    title: string;
-    body: string;
-    source: SourceRef[];
-  }>;
-};
-
-type CompleteDocumentProps = {
-  source: string;
-  manifest: PreviewManifest;
-};
-
-type EditorialItems<T> = {
-  items: T[];
-};
-
-function sourceNodeIds(source: SourceRef[]): string {
-  return [...new Set(source.map(({ nodeId }) => nodeId))].join(" ");
-}
-
-export function SourceBadge({ source }: { source: SourceRef[] }) {
-  const count = source.length;
-  const label = `${count} source ${count === 1 ? "reference" : "references"}`;
-
-  return (
-    <span
-      className="source-badge"
-      title={source.map(({ evidence }) => evidence).join(" · ")}
-    >
-      {label}
-    </span>
-  );
-}
+type Highlight = { label: string; title: string; body: string };
+type Comparison = { label: string; before: string; after: string };
+type TimelineEntry = { label: string; title: string; body: string };
+type Risk = { level: "low" | "medium" | "high"; title: string; body: string };
+type Action = { title: string; body: string };
 
 export function PrintButton() {
   return (
@@ -93,14 +21,21 @@ export function Hero({
   eyebrow,
   lede,
   status,
-}: Pick<EditorialData, "title" | "eyebrow" | "lede" | "status">) {
+}: {
+  title: string;
+  eyebrow: string;
+  lede: string;
+  status?: string;
+}) {
   return (
     <header className="editorial-hero">
       <div className="editorial-hero__topline">
         <p className="eyebrow">{eyebrow}</p>
-        <p className="status" data-status={status}>
-          {status}
-        </p>
+        {status ? (
+          <p className="status" data-status={status}>
+            {status}
+          </p>
+        ) : null}
       </div>
       <h1>{title}</h1>
       <p className="lede">{lede}</p>
@@ -109,57 +44,74 @@ export function Hero({
   );
 }
 
+function Section({
+  kicker,
+  title,
+  id,
+  children,
+}: {
+  kicker: string;
+  title: string;
+  id: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="editorial-section" aria-labelledby={`${id}-title`}>
+      <div className="section-heading">
+        <p className="section-kicker">{kicker}</p>
+        <h2 id={`${id}-title`}>{title}</h2>
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export function HighlightGrid({
   items,
-}: EditorialItems<EditorialData["highlights"][number]>) {
+  kicker = "Verdict",
+  title = "Key decisions",
+}: {
+  items: Highlight[];
+  kicker?: string;
+  title?: string;
+}) {
   if (items.length === 0) {
     return null;
   }
 
   return (
-    <section className="editorial-section" aria-labelledby="highlights-title">
-      <div className="section-heading">
-        <p className="section-kicker">Verdict</p>
-        <h2 id="highlights-title">Key decisions</h2>
-      </div>
+    <Section kicker={kicker} title={title} id="highlights">
       <div className="card-grid highlight-grid">
         {items.map((item, index) => (
-          <article
-            className="editorial-card highlight-card"
-            data-source-node-ids={sourceNodeIds(item.source)}
-            key={`${item.label}-${item.title}-${index}`}
-          >
+          <article className="editorial-card highlight-card" key={index}>
             <p className="card-label">{item.label}</p>
             <h3>{item.title}</h3>
             <p>{item.body}</p>
-            <SourceBadge source={item.source} />
           </article>
         ))}
       </div>
-    </section>
+    </Section>
   );
 }
 
 export function ComparisonGrid({
   items,
-}: EditorialItems<EditorialData["comparisons"][number]>) {
+  kicker = "Delta",
+  title = "What changes",
+}: {
+  items: Comparison[];
+  kicker?: string;
+  title?: string;
+}) {
   if (items.length === 0) {
     return null;
   }
 
   return (
-    <section className="editorial-section" aria-labelledby="comparisons-title">
-      <div className="section-heading">
-        <p className="section-kicker">Delta</p>
-        <h2 id="comparisons-title">What changes</h2>
-      </div>
+    <Section kicker={kicker} title={title} id="comparisons">
       <div className="card-grid comparison-grid">
         {items.map((item, index) => (
-          <article
-            className="editorial-card comparison-card"
-            data-source-node-ids={sourceNodeIds(item.source)}
-            key={`${item.label}-${index}`}
-          >
+          <article className="editorial-card comparison-card" key={index}>
             <p className="card-label">{item.label}</p>
             <dl>
               <div>
@@ -171,34 +123,31 @@ export function ComparisonGrid({
                 <dd>{item.after}</dd>
               </div>
             </dl>
-            <SourceBadge source={item.source} />
           </article>
         ))}
       </div>
-    </section>
+    </Section>
   );
 }
 
 export function Timeline({
   items,
-}: EditorialItems<EditorialData["timeline"][number]>) {
+  kicker = "Sequence",
+  title = "Timeline",
+}: {
+  items: TimelineEntry[];
+  kicker?: string;
+  title?: string;
+}) {
   if (items.length === 0) {
     return null;
   }
 
   return (
-    <section className="editorial-section" aria-labelledby="timeline-title">
-      <div className="section-heading">
-        <p className="section-kicker">Sequence</p>
-        <h2 id="timeline-title">Timeline</h2>
-      </div>
+    <Section kicker={kicker} title={title} id="timeline">
       <ol className="timeline-list">
         {items.map((item, index) => (
-          <li
-            className="timeline-item"
-            data-source-node-ids={sourceNodeIds(item.source)}
-            key={`${item.label}-${item.title}-${index}`}
-          >
+          <li className="timeline-item" key={index}>
             <div className="timeline-marker" aria-hidden="true">
               {index + 1}
             </div>
@@ -206,137 +155,87 @@ export function Timeline({
               <p className="card-label">{item.label}</p>
               <h3>{item.title}</h3>
               <p>{item.body}</p>
-              <SourceBadge source={item.source} />
             </div>
           </li>
         ))}
       </ol>
-    </section>
+    </Section>
   );
 }
 
 export function RiskList({
   items,
-}: EditorialItems<EditorialData["risks"][number]>) {
+  kicker = "Watchlist",
+  title = "Risks to watch",
+}: {
+  items: Risk[];
+  kicker?: string;
+  title?: string;
+}) {
   if (items.length === 0) {
     return null;
   }
 
   return (
-    <section className="editorial-section" aria-labelledby="risks-title">
-      <div className="section-heading">
-        <p className="section-kicker">Watchlist</p>
-        <h2 id="risks-title">Risks to watch</h2>
-      </div>
+    <Section kicker={kicker} title={title} id="risks">
       <ul className="editorial-list risk-list">
         {items.map((item, index) => (
-          <li
-            className="editorial-card risk-item"
-            data-level={item.level}
-            data-source-node-ids={sourceNodeIds(item.source)}
-            key={`${item.level}-${item.title}-${index}`}
-          >
+          <li className="editorial-card risk-item" data-level={item.level} key={index}>
             <div>
               <p className="risk-level">{item.level} risk</p>
               <h3>{item.title}</h3>
               <p>{item.body}</p>
             </div>
-            <SourceBadge source={item.source} />
           </li>
         ))}
       </ul>
-    </section>
+    </Section>
   );
 }
 
 export function ActionList({
   items,
-}: EditorialItems<EditorialData["actions"][number]>) {
+  kicker = "Ownership",
+  title = "Next actions",
+}: {
+  items: Action[];
+  kicker?: string;
+  title?: string;
+}) {
   if (items.length === 0) {
     return null;
   }
 
   return (
-    <section className="editorial-section" aria-labelledby="actions-title">
-      <div className="section-heading">
-        <p className="section-kicker">Ownership</p>
-        <h2 id="actions-title">Next actions</h2>
-      </div>
+    <Section kicker={kicker} title={title} id="actions">
       <ol className="editorial-list action-list">
         {items.map((item, index) => (
-          <li
-            className="editorial-card action-item"
-            data-source-node-ids={sourceNodeIds(item.source)}
-            key={`${item.title}-${index}`}
-          >
+          <li className="editorial-card action-item" key={index}>
             <span className="action-number" aria-hidden="true">
               {String(index + 1).padStart(2, "0")}
             </span>
             <div>
               <h3>{item.title}</h3>
               <p>{item.body}</p>
-              <SourceBadge source={item.source} />
             </div>
           </li>
         ))}
       </ol>
-    </section>
+    </Section>
   );
 }
 
-export function EditorialLayer({ data }: { data: EditorialData }) {
+export function CompleteDocument({ source }: { source: string }) {
   return (
-    <article className="editorial-layer" data-editorial-layer="true">
-      <Hero
-        title={data.title}
-        eyebrow={data.eyebrow}
-        lede={data.lede}
-        status={data.status}
-      />
-      <HighlightGrid items={data.highlights} />
-      <ComparisonGrid items={data.comparisons} />
-      <Timeline items={data.timeline} />
-      <RiskList items={data.risks} />
-      <ActionList items={data.actions} />
-    </article>
-  );
-}
-
-export function CompleteDocument({ source, manifest }: CompleteDocumentProps) {
-  const coverage = sourceCoverage(source);
-  const sourceAnchorModel = extractSourceAnchorModel(source);
-
-  return (
-    <main className="complete-document" data-complete-document="true">
-      <header className="document-header">
-        <p className="eyebrow">Canonical source · {manifest.source_filename}</p>
-        <h1>Complete document</h1>
-        <p>
-          {coverage.totalNodes} source nodes · {coverage.percentage}% coverage
-        </p>
-        <code>{manifest.source_sha256}</code>
-      </header>
+    <details className="complete-document" open>
+      <summary>Full document</summary>
       <article className="source-document" aria-label="Formatted source">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[
-            rehypeRaw,
-            rehypeSanitize,
-            canonicalSourceAnchorPlugin(sourceAnchorModel),
-          ]}
-          components={{
-            img: ({ alt }) => (
-              <span data-inert-image="true">{alt ?? "Image"}</span>
-            ),
-          }}
-        >
-          {source}
-        </ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{source}</ReactMarkdown>
       </article>
       <details className="source-verification">
-        <summary>Verify canonical source</summary>
+        <summary>Raw source text</summary>
         <pre>{source}</pre>
       </details>
-    </main>
+    </details>
   );
 }

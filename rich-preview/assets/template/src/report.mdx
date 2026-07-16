@@ -1,34 +1,22 @@
-import reportData from "./content/report-data.json"
-import { CompleteDocument, EditorialLayer } from "./components/editorial"
-import { validateEditorialData } from "./lib/provenance"
-import { extractSourceNodes } from "./lib/source"
+import { Hero, HighlightGrid, ComparisonGrid, Timeline, RiskList, ActionList, CompleteDocument } from "./components/editorial"
+import { Mermaid } from "./components/mermaid"
 import "./styles.css"
 
-export const Report = ({
-  editorialData = reportData,
-  children,
-  ...documentProps
-}) => {
-  const sourceNodes = extractSourceNodes(documentProps.source ?? "")
-  const validation = validateEditorialData(editorialData, sourceNodes)
-  const safeEditorialData = validation.valid
-    ? editorialData
-    : {
-        ...editorialData,
-        highlights: [],
-        comparisons: [],
-        timeline: [],
-        risks: [],
-        actions: [],
-      }
-
-  return (
-    <div className="preview-shell">
-      <EditorialLayer data={safeEditorialData} />
-      {children}
-      <CompleteDocument {...documentProps} />
-    </div>
-  )
-}
+export const Report = ({ source }) => (
+  <div className="preview-shell">
+    <Hero
+      eyebrow="Preview"
+      title="Replace with the source title"
+      lede="Replace with a one-sentence summary taken from the source."
+      status="Draft"
+    />
+    {/*
+      Author editorial sections here from references/components.md.
+      Use only facts the source states. Delete this comment and the Hero
+      placeholders once you have real content, then keep CompleteDocument last.
+    */}
+    <CompleteDocument source={source} />
+  </div>
+)
 
 <Report {...props} />

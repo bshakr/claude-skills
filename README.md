@@ -12,7 +12,7 @@ Repository: https://github.com/bshakr/agent-skills
 | [`pr-comments`](./pr-comments) | 1.1.0 | Resolve PR review comments end-to-end — fetch, evaluate validity, fix valid ones, commit, push, and draft replies for approval. |
 | [`ship-ticket`](./ship-ticket) | 1.0.0 | Ship a Linear ticket end-to-end — worktree off latest main, planned TDD, mandatory `/review`, PR with traceable review SHA. |
 | [`test-plan-builder`](./test-plan-builder) | 1.0.0 | Build a code-grounded, multi-tab QA test plan for a feature spanning one or more repos — fans out parallel research subagents per repo/layer, reconciles what's actually implemented vs the spec, and outputs a formatted spreadsheet. |
-| [`rich-preview`](./rich-preview) | — | Turn completed Markdown plans, summaries, and reports into polished, lossless local MDX webpages with source-grounded editorial highlights, diagrams, and charts. |
+| [`rich-preview`](./rich-preview) | — | Turn a completed Markdown plan, summary, or report into a polished local web page — an editorial layer of highlights, timelines, risks, and mermaid diagrams over the full source, served on localhost. The agent authors one MDX file; previews share the template's `node_modules`, so there's no per-preview install. |
 
 ## Install
 

@@ -1,40 +1,51 @@
 ---
 name: rich-preview
-description: Use when a completed plan, investigation, summary, or decision memo needs a polished, lossless local MDX webpage with editorial highlights, source-grounded diagrams or charts, print styling, or a shareable localhost preview.
+description: Use when a completed plan, investigation, summary, or decision memo needs a polished local webpage — an editorial layer of highlights, timelines, risks, and mermaid diagrams over the full source document, served on localhost.
 ---
 
 # Rich Preview
 
-Turn a completed source document into a local editorial webpage. The editorial layer is additive; the complete canonical source remains the authority.
+Turn a finished Markdown document into a beautiful local web page. You author one MDX
+file directly; the full source is always preserved and rendered underneath the
+editorial layer.
 
 ## Workflow
 
-1. Preserve the source. If the source is in the conversation, save the completed document verbatim as Markdown before continuing. Do not rewrite, condense, reorder, or omit source content.
-2. From this skill directory, initialize a new preview. Use absolute source and output paths when they are outside the current directory:
+1. Preserve the source. If it lives in the conversation, save it verbatim as a `.md`
+   file first. Never rewrite, condense, or reorder it.
+2. Initialize a preview (use absolute paths when the source or output is elsewhere):
 
    ```bash
-   python scripts/init_preview.py <source.md> --output <preview-directory> --slug <slug>
-   npm ci --prefix <preview-directory>
+   python scripts/init_preview.py <source.md> --output <preview-dir>
    ```
 
-   Do not replace a non-empty output directory without explicit user approval. The initializer stores the byte-identical canonical source at `src/content/source.md` and records its SHA-256 digest.
-3. Read `references/authoring-contract.md` completely before authoring the preview.
-4. Inspect the canonical source nodes. Author the editorial data in `src/content/report-data.json`, then compose supported editorial sections, diagrams, and charts in `src/report.mdx`. When the source explicitly states a multi-step process, conditional branch, dependency, sequence, or quantitative comparison, include the smallest useful matching visual. Render every included visual spec with its supported component in `src/report.mdx`. Every derived claim and visual element must cite an exact source span. Sparse sources may remain editorial-only.
-5. Reject unsupported visuals. If the source does not contain the relationships or numeric values required by a supported component, omit the visual and rely on the complete document.
-6. Validate from the skill directory:
+   This copies the template, symlinks its shared `node_modules` (running `npm ci`
+   in the template once on first use), and writes your source to
+   `src/content/source.md`. Pass `--force` to replace a non-empty output directory.
+3. Read `references/components.md`, then overwrite `<preview-dir>/src/report.mdx`:
+   - A `Hero` with the source's real title and a one-line summary.
+   - Editorial sections (`HighlightGrid`, `ComparisonGrid`, `Timeline`, `RiskList`,
+     `ActionList`) built only from facts the source states. Skip any section the
+     source has no material for — a sparse source makes a sparse page.
+   - `Mermaid` diagrams only for structure the source actually describes.
+   - Always end with `<CompleteDocument source={source} />`.
+
+   Do not invent titles, numbers, owners, or dates that are not in the source.
+4. Validate (runs the production build; fix any error it reports):
 
    ```bash
-   python scripts/validate_preview.py <preview-directory>
+   python scripts/validate_preview.py <preview-dir>
    ```
 
-   Resolve every digest, coverage, provenance, test, or build failure before serving.
-7. Serve the validated preview in a persistent terminal session:
+5. Serve it in a persistent session and confirm it is up:
 
    ```bash
-   python scripts/serve_preview.py <preview-directory> --port <preferred-port>
+   python scripts/serve_preview.py <preview-dir> --port <preferred-port>
    ```
 
-   Use the URL printed by the server because it may choose the next available port. Verify that URL returns HTTP 200, for example with `curl --fail --silent --output /dev/null --write-out '%{http_code}\n' <url>`.
-8. Return the exact localhost URL to the user. Keep the server running so the page remains available.
+   The server prints the URL and may pick the next free port. Verify HTTP 200 with
+   `curl --fail --silent -o /dev/null -w '%{http_code}\n' <url>`, then hand the URL
+   to the user and keep the server running.
 
-Never report success from an unvalidated build or substitute an editorial summary for the complete source.
+Never report success from a build you did not run, and never replace the complete
+source with an editorial summary.

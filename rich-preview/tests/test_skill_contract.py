@@ -6,8 +6,8 @@ from pathlib import Path
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_DESCRIPTION = (
     "Use when a completed plan, investigation, summary, or decision memo needs a "
-    "polished, lossless local MDX webpage with editorial highlights, source-grounded "
-    "diagrams or charts, print styling, or a shareable localhost preview."
+    "polished local webpage — an editorial layer of highlights, timelines, risks, "
+    "and mermaid diagrams over the full source document, served on localhost."
 )
 
 
@@ -15,7 +15,7 @@ class SkillContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.skill = (SKILL_ROOT / "SKILL.md").read_text()
 
-    def test_frontmatter_has_only_the_portable_skill_identity(self) -> None:
+    def test_frontmatter_is_the_portable_skill_identity(self) -> None:
         frontmatter_match = re.match(r"\A---\n(.*?)\n---\n", self.skill, re.DOTALL)
 
         self.assertIsNotNone(frontmatter_match)
@@ -29,70 +29,62 @@ class SkillContractTests(unittest.TestCase):
         )
         self.assertTrue(EXPECTED_DESCRIPTION.startswith("Use when"))
 
-    def test_workflow_preserves_authors_validates_serves_and_hands_off(self) -> None:
+    def test_workflow_covers_init_author_validate_serve(self) -> None:
         required_phrases = (
             "Preserve the source",
             "scripts/init_preview.py",
-            "Read `references/authoring-contract.md` completely",
-            "report-data.json",
-            "report.mdx",
-            "include the smallest useful matching visual",
-            "Render every included visual spec",
-            "Reject unsupported visuals",
+            "references/components.md",
+            "src/report.mdx",
+            "<CompleteDocument source={source} />",
             "scripts/validate_preview.py",
             "scripts/serve_preview.py",
             "HTTP 200",
-            "exact localhost URL",
         )
 
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, self.skill)
 
-    def test_authoring_contract_defines_the_editorial_and_visual_schema(self) -> None:
-        contract_path = SKILL_ROOT / "references/authoring-contract.md"
+    def test_referenced_files_exist(self) -> None:
+        for relative_path in (
+            "references/components.md",
+            "scripts/init_preview.py",
+            "scripts/validate_preview.py",
+            "scripts/serve_preview.py",
+            "agents/openai.yaml",
+        ):
+            with self.subTest(path=relative_path):
+                self.assertTrue((SKILL_ROOT / relative_path).is_file())
 
-        self.assertTrue(contract_path.is_file())
-        contract = contract_path.read_text()
+    def test_components_reference_documents_the_vocabulary(self) -> None:
+        contract = (SKILL_ROOT / "references/components.md").read_text()
         required_phrases = (
-            "Positive editorial recipe",
-            "Source-node lookup",
-            "Exact-span provenance",
-            '"nodeId": "paragraph:',
-            '"evidence":',
-            "EditorialData",
-            "ProcessSpec",
-            "ChartSpec",
-            "ProcessFlow",
-            "BranchFlow",
-            "SequenceFlow",
-            "DependencyMap",
-            "BarChart",
-            "LineChart",
-            "StackedBar",
-            "ComparisonChart",
-            "Sparse documents",
-            "Fallback",
-            "Accessibility",
-            "Print",
-            "raw URLs",
-            "No omissions",
+            "Hero",
+            "HighlightGrid",
+            "ComparisonGrid",
+            "Timeline",
+            "RiskList",
+            "ActionList",
+            "CompleteDocument",
+            "Mermaid",
+            "flowchart",
+            "sequenceDiagram",
         )
 
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, contract)
 
-    def test_openai_interface_is_exact_and_invokes_the_skill(self) -> None:
+    def test_openai_interface_invokes_the_skill(self) -> None:
         metadata = (SKILL_ROOT / "agents/openai.yaml").read_text()
 
         self.assertEqual(
             metadata,
             "interface:\n"
             "  display_name: Rich Preview\n"
-            "  short_description: Turn plans and summaries into polished webpages\n"
-            "  default_prompt: Use $rich-preview to turn this completed plan into a "
-            "polished, lossless local MDX webpage.\n",
+            "  short_description: Turn plans and summaries into polished local webpages\n"
+            "  default_prompt: Use $rich-preview to turn this completed document into a "
+            "polished local webpage that keeps the full source.\n",
         )
 
 

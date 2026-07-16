@@ -1,7 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import manifest from "./content/preview-manifest.json";
 import source from "./content/source.md?raw";
 import Report from "./report.mdx";
 
@@ -13,6 +12,6 @@ if (!root) {
 
 createRoot(root).render(
   <StrictMode>
-    <Report manifest={manifest} source={source} />
+    <Report source={source} />
   </StrictMode>,
 );
