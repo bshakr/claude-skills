@@ -335,27 +335,33 @@ export function ComparisonGrid({
   return (
     <Section kicker={kicker} title={title} id="comparisons">
       <div className="card-grid comparison-grid">
-        {items.map((item, index) => (
-          <article className="editorial-card comparison-card" key={index}>
-            <p className="card-label">{item.label}</p>
-            <dl>
-              <div className="comparison-side comparison-side--before">
-                <dt>Before</dt>
-                <dd>{item.before}</dd>
-                {item.beforeDetail ? (
-                  <pre className="wireframe">{item.beforeDetail}</pre>
-                ) : null}
-              </div>
-              <div className="comparison-side comparison-side--after">
-                <dt>After</dt>
-                <dd>{item.after}</dd>
-                {item.afterDetail ? (
-                  <pre className="wireframe">{item.afterDetail}</pre>
-                ) : null}
-              </div>
-            </dl>
-          </article>
-        ))}
+        {items.map((item, index) => {
+          const detailed = Boolean(item.beforeDetail || item.afterDetail);
+          return (
+            <article
+              className={`editorial-card comparison-card${detailed ? " comparison-card--detailed" : ""}`}
+              key={index}
+            >
+              <p className="card-label">{item.label}</p>
+              <dl>
+                <div className="comparison-side comparison-side--before">
+                  <dt>Before</dt>
+                  <dd>{item.before}</dd>
+                  {item.beforeDetail ? (
+                    <pre className="wireframe">{item.beforeDetail}</pre>
+                  ) : null}
+                </div>
+                <div className="comparison-side comparison-side--after">
+                  <dt>After</dt>
+                  <dd>{item.after}</dd>
+                  {item.afterDetail ? (
+                    <pre className="wireframe">{item.afterDetail}</pre>
+                  ) : null}
+                </div>
+              </dl>
+            </article>
+          );
+        })}
       </div>
     </Section>
   );

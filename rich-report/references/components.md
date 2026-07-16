@@ -96,6 +96,10 @@ them to carry a wireframe, exact UI copy, or a config diff verbatim from the sou
 instead of paraphrasing it away. Include a detail only for the side the source
 actually shows one for.
 
+An item with a detail spans the full section width (Before over After, each with a
+slim label chip above a full-width panel) so wide wireframes read unscrolled; plain
+items stay in the compact two-up grid. Mixed sections are fine.
+
 ```mdx
 <ComparisonGrid items={[
   { label: "Approve button", before: "[Approve]", after: "[Approve & submit to HMRC]" },

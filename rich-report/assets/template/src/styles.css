@@ -552,6 +552,46 @@ p {
   font-weight: 600;
 }
 
+/* A comparison item carrying a wireframe spans the full grid width and
+   flattens: the tinted box becomes a slim label row (chip + summary) above a
+   near-edge-to-edge dark panel — two padding layers (card + panel), not three. */
+.comparison-card--detailed {
+  grid-column: 1 / -1;
+}
+
+.comparison-card--detailed .comparison-side {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.2rem 0.8rem;
+  align-items: baseline;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.comparison-card--detailed .comparison-side + .comparison-side {
+  margin-top: 1.5rem;
+}
+
+.comparison-card--detailed dt {
+  margin: 0;
+  padding: 0.24rem 0.55rem;
+  border-radius: 0.4rem;
+  background: var(--warm-strong);
+  color: var(--ink);
+}
+
+.comparison-card--detailed .comparison-side--after dt {
+  background: var(--purple-pale);
+  color: var(--purple-deep);
+}
+
+.comparison-card--detailed .wireframe {
+  grid-column: 1 / -1;
+  margin-top: 0.85rem;
+  font-size: 0.8rem;
+}
+
 .wireframe,
 .terminal__pre {
   box-sizing: border-box;
@@ -1309,6 +1349,13 @@ p {
     border: 1px solid #bbb;
     background: #fff;
     color: #000;
+  }
+
+  /* Wireframes must never wrap; scale the font so wide lines fit the A4 column. */
+  .wireframe,
+  .terminal__pre,
+  .comparison-card--detailed .wireframe {
+    font-size: 0.6rem;
   }
 
   .callout,
