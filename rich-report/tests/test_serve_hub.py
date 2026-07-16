@@ -14,7 +14,7 @@ class ServeHubTest(unittest.TestCase):
     def test_reports_already_running_hub_without_starting_a_server(self) -> None:
         output = io.StringIO()
         with (
-            patch("serve_hub.fetch", return_value="<meta content='rich-preview-hub'>"),
+            patch("serve_hub.fetch", return_value="<meta content='rich-report-hub'>"),
             patch("serve_hub.subprocess.run") as run,
             contextlib.redirect_stdout(output),
         ):
@@ -34,7 +34,7 @@ class ServeHubTest(unittest.TestCase):
             result = serve_hub(Path("/hub"), 4400)
 
         self.assertEqual(result, 1)
-        self.assertIn("not the rich-preview hub", errors.getvalue())
+        self.assertIn("not the rich-report hub", errors.getvalue())
         run.assert_not_called()
 
     def test_starts_dev_server_when_the_port_is_free(self) -> None:

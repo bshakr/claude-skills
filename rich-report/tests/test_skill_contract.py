@@ -24,7 +24,7 @@ class SkillContractTests(unittest.TestCase):
         self.assertEqual(
             lines,
             [
-                "name: rich-preview",
+                "name: rich-report",
                 f"description: {EXPECTED_DESCRIPTION}",
             ],
         )
@@ -89,9 +89,9 @@ class SkillContractTests(unittest.TestCase):
         self.assertEqual(
             metadata,
             "interface:\n"
-            "  display_name: Rich Preview\n"
+            "  display_name: Rich Report\n"
             "  short_description: Turn plans and summaries into polished local webpages\n"
-            "  default_prompt: Use $rich-preview to turn this completed document into a "
+            "  default_prompt: Use $rich-report to turn this completed document into a "
             "polished local webpage that keeps the full source.\n",
         )
 

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from package_manager import install_command, package_manager
 
-DEFAULT_HUB = Path.home() / ".rich-preview"
+DEFAULT_HUB = Path.home() / ".rich-report"
 HUB_PORT = 4400
 SKILL_ROOT = Path(__file__).parents[1]
 TEMPLATE = SKILL_ROOT / "assets" / "template"

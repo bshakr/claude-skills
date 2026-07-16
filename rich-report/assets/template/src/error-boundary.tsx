@@ -15,7 +15,7 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="preview-shell">
           <div className="hub-error">
-            <p className="eyebrow">Rich Preview</p>
+            <p className="eyebrow">Rich Report</p>
             <h1>This report failed to render</h1>
             <pre>{this.state.error.message}</pre>
             <a href="/">Back to all reports</a>

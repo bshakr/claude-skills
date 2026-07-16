@@ -7,9 +7,9 @@ from pathlib import Path
 
 from package_manager import package_manager
 
-DEFAULT_HUB = Path.home() / ".rich-preview"
+DEFAULT_HUB = Path.home() / ".rich-report"
 LOOPBACK_HOST = "127.0.0.1"
-HUB_MARKER = "rich-preview-hub"
+HUB_MARKER = "rich-report-hub"
 
 
 def fetch(url: str) -> str | None:
@@ -30,7 +30,7 @@ def serve_hub(hub: Path, port: int = 4400) -> int:
             print(url, flush=True)
             return 0
         print(
-            f"Port {port} is serving something that is not the rich-preview hub; "
+            f"Port {port} is serving something that is not the rich-report hub; "
             f"stop it or pass --port.",
             file=sys.stderr,
         )

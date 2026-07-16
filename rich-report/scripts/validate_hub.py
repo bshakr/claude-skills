@@ -4,7 +4,7 @@ from pathlib import Path
 
 from package_manager import package_manager
 
-DEFAULT_HUB = Path.home() / ".rich-preview"
+DEFAULT_HUB = Path.home() / ".rich-report"
 
 
 def validate_hub(hub: Path = DEFAULT_HUB) -> None:

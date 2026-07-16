@@ -12,7 +12,7 @@ Repository: https://github.com/bshakr/agent-skills
 | [`pr-comments`](./pr-comments) | 1.1.0 | Resolve PR review comments end-to-end — fetch, evaluate validity, fix valid ones, commit, push, and draft replies for approval. |
 | [`ship-ticket`](./ship-ticket) | 1.0.0 | Ship a Linear ticket end-to-end — worktree off latest main, planned TDD, mandatory `/review`, PR with traceable review SHA. |
 | [`test-plan-builder`](./test-plan-builder) | 1.0.0 | Build a code-grounded, multi-tab QA test plan for a feature spanning one or more repos — fans out parallel research subagents per repo/layer, reconciles what's actually implemented vs the spec, and outputs a formatted spreadsheet. |
-| [`rich-preview`](./rich-preview) | — | Turn a completed Markdown plan, summary, or report into a polished local web page — an editorial layer of highlights, timelines, risks, and mermaid diagrams over the full source. Reports are added to a single hub at `~/.rich-preview` that serves them all from one long-running server on port 4400 with an index grouped by project. The agent authors one MDX file per report; dependencies install once for the hub. |
+| [`rich-report`](./rich-report) | — | Turn a completed Markdown plan, summary, or report into a polished local web page — an editorial layer of highlights, timelines, risks, and mermaid diagrams over the full source. Reports are added to a single hub at `~/.rich-report` that serves them all from one long-running server on port 4400 with an index grouped by project. The agent authors one MDX file per report; dependencies install once for the hub. |
 
 ## Install
 
@@ -30,14 +30,14 @@ ln -s ~/code/agent-skills/standup ~/.claude/skills/standup
 ln -s ~/code/agent-skills/pr-comments ~/.claude/skills/pr-comments
 ln -s ~/code/agent-skills/ship-ticket ~/.claude/skills/ship-ticket
 ln -s ~/code/agent-skills/test-plan-builder ~/.claude/skills/test-plan-builder
-ln -s ~/code/agent-skills/rich-preview ~/.claude/skills/rich-preview
+ln -s ~/code/agent-skills/rich-report ~/.claude/skills/rich-report
 ```
 
 Or into Codex:
 
 ```bash
 mkdir -p ~/.codex/skills
-ln -s ~/code/agent-skills/rich-preview ~/.codex/skills/rich-preview
+ln -s ~/code/agent-skills/rich-report ~/.codex/skills/rich-report
 ```
 
 Symlinks mean `git pull` instantly updates the live skill. Restart the agent session afterwards so its skill index reloads.

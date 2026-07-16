@@ -1,6 +1,6 @@
 .last-version-check
 .sprint-quote-cache.json
-.rich-preview/
+.rich-report/
 .superpowers/
 node_modules/
 pnpm-lock.yaml

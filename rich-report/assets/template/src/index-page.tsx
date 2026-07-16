@@ -7,7 +7,7 @@ export function IndexPage() {
   return (
     <div className="preview-shell hub-index">
       <header className="hub-header">
-        <p className="eyebrow">Rich Preview</p>
+        <p className="eyebrow">Rich Report</p>
         <h1>Reports</h1>
         <p className="lede">Every report you've generated, grouped by project.</p>
       </header>

@@ -1,12 +1,12 @@
 ---
-name: rich-preview
+name: rich-report
 description: Use when a completed plan, investigation, summary, or decision memo needs a polished local webpage — an editorial layer of highlights, timelines, risks, and mermaid diagrams over the full source — added to a local report hub served on localhost.
 ---
 
-# Rich Preview
+# Rich Report
 
 Turn a finished Markdown document into a beautiful local web page. Reports are added
-to a single hub at `~/.rich-preview` that serves them all from one long-running
+to a single hub at `~/.rich-report` that serves them all from one long-running
 server and shows an index grouped by project. You author one MDX file per report; the
 full source is always preserved and rendered underneath the editorial layer.
 
@@ -21,7 +21,7 @@ full source is always preserved and rendered underneath the editorial layer.
    ```
 
    This syncs the hub app (installing dependencies once — pnpm when available, npm
-   otherwise), then creates `~/.rich-preview/content/<project>/<slug>/` with your
+   otherwise), then creates `~/.rich-report/content/<project>/<slug>/` with your
    source, a `meta.json`, and a starter `report.mdx`. It prints the content directory
    and the report URL. `project` is inferred from the source's git repo (override with
    `--project`), `slug` from the filename (override with `--slug`); `--force` replaces
@@ -46,7 +46,7 @@ full source is always preserved and rendered underneath the editorial layer.
    `curl --fail --silent -o /dev/null -w '%{http_code}\n' <report-url>`. To build-check
    every report at once, run `python scripts/validate_hub.py`.
 5. Hand the user the report URL, and mention the index at the hub root
-   (`http://127.0.0.1:4400/`). Reports are plain data under `~/.rich-preview/content/`
+   (`http://127.0.0.1:4400/`). Reports are plain data under `~/.rich-report/content/`
    — never inside a repository, and deleted by removing the folder.
 
 Never report success from a build you did not run, and never replace the complete
