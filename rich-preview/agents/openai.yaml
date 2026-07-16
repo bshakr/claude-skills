@@ -1,4 +1,4 @@
 interface:
-  display_name: "Rich Preview"
-  short_description: "Turn plans and summaries into polished webpages"
-  default_prompt: "Use $rich-preview to turn this completed plan into a polished, lossless local MDX webpage."
+  display_name: Rich Preview
+  short_description: Turn plans and summaries into polished webpages
+  default_prompt: Use $rich-preview to turn this completed plan into a polished, lossless local MDX webpage.
