@@ -1,2 +1,8 @@
 .last-version-check
 .sprint-quote-cache.json
+.rich-preview/
+.superpowers/
+node_modules/
+dist/
+*.tsbuildinfo
+__pycache__/

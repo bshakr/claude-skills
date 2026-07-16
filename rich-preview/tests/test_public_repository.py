@@ -19,6 +19,20 @@ IGNORED_PARTS = {"node_modules", "dist", "__pycache__"}
 
 
 class PublicRepositoryTests(unittest.TestCase):
+    def test_generated_preview_and_build_outputs_are_ignored(self) -> None:
+        patterns = set((REPOSITORY_ROOT / ".gitignore").read_text().splitlines())
+
+        self.assertTrue(
+            {
+                ".rich-preview/",
+                ".superpowers/",
+                "node_modules/",
+                "dist/",
+                "*.tsbuildinfo",
+                "__pycache__/",
+            }.issubset(patterns)
+        )
+
     def test_public_files_do_not_contain_private_paths_or_credentials(self) -> None:
         files = []
         for path in PUBLIC_PATHS:
