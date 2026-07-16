@@ -13,6 +13,15 @@ type Comparison = {
 type TimelineEntry = { label: string; title: string; body: string };
 type Risk = { level: "low" | "medium" | "high"; title: string; body: string };
 type Action = { title: string; body: string };
+type Stat = { value: string; label: string; detail?: string };
+type CalloutTone = "info" | "success" | "warning" | "insight";
+type CheckItem = { state: "done" | "pending" | "blocked"; title: string; body?: string };
+
+const CHECK_MARK: Record<CheckItem["state"], string> = {
+  done: "✓",
+  pending: "–",
+  blocked: "✗",
+};
 
 export function PrintButton() {
   return (
@@ -76,6 +85,45 @@ export function HighlightGrid({
   items,
   kicker = "Verdict",
   title = "Key decisions",
+  variant,
+}: {
+  items: Highlight[];
+  kicker?: string;
+  title?: string;
+  variant?: "tinted";
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  const tinted = variant === "tinted";
+
+  return (
+    <Section kicker={kicker} title={title} id="highlights">
+      <div className={`card-grid highlight-grid${tinted ? " highlight-grid--tinted" : ""}`}>
+        {items.map((item, index) => (
+          <article
+            className={`editorial-card highlight-card${tinted ? " highlight-card--tinted" : ""}`}
+            key={index}
+          >
+            {tinted ? (
+              <span className="card-chip">{item.label}</span>
+            ) : (
+              <p className="card-label">{item.label}</p>
+            )}
+            <h3>{item.title}</h3>
+            <p>{item.body}</p>
+          </article>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+export function FindingRows({
+  items,
+  kicker = "Findings",
+  title = "What we found",
 }: {
   items: Highlight[];
   kicker?: string;
@@ -86,17 +134,119 @@ export function HighlightGrid({
   }
 
   return (
-    <Section kicker={kicker} title={title} id="highlights">
-      <div className="card-grid highlight-grid">
+    <Section kicker={kicker} title={title} id="findings">
+      <div className="finding-rows">
         {items.map((item, index) => (
-          <article className="editorial-card highlight-card" key={index}>
-            <p className="card-label">{item.label}</p>
-            <h3>{item.title}</h3>
-            <p>{item.body}</p>
-          </article>
+          <div className="finding-row" key={index}>
+            <div className="finding-row__aside">
+              <span className="finding-row__numeral" aria-hidden="true">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <span className="finding-row__label">{item.label}</span>
+            </div>
+            <div className="finding-row__body">
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
+            </div>
+          </div>
         ))}
       </div>
     </Section>
+  );
+}
+
+export function StatGrid({
+  items,
+  kicker = "By the numbers",
+  title = "Numbers that matter",
+}: {
+  items: Stat[];
+  kicker?: string;
+  title?: string;
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <Section kicker={kicker} title={title} id="stats">
+      <div className="stat-grid">
+        {items.map((item, index) => (
+          <div className="stat-tile" key={index}>
+            <p className="stat-tile__value">{item.value}</p>
+            <p className="stat-tile__label">{item.label}</p>
+            {item.detail ? <p className="stat-tile__detail">{item.detail}</p> : null}
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+export function Callout({
+  tone = "info",
+  title,
+  body,
+}: {
+  tone?: CalloutTone;
+  title?: string;
+  body: string;
+}) {
+  return (
+    <div className="callout" data-tone={tone}>
+      {title ? <p className="callout__title">{title}</p> : null}
+      <p className="callout__body">{body}</p>
+    </div>
+  );
+}
+
+export function Terminal({ title, children }: { title?: string; children: string }) {
+  return (
+    <figure className="terminal">
+      {title ? <figcaption className="terminal__title">{title}</figcaption> : null}
+      <pre className="terminal__pre">{children}</pre>
+    </figure>
+  );
+}
+
+export function Checklist({
+  items,
+  kicker = "Status",
+  title = "Checklist",
+}: {
+  items: CheckItem[];
+  kicker?: string;
+  title?: string;
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <Section kicker={kicker} title={title} id="checklist">
+      <ul className="checklist">
+        {items.map((item, index) => (
+          <li className="checklist__item" data-state={item.state} key={index}>
+            <span className="checklist__marker" aria-hidden="true">
+              {CHECK_MARK[item.state]}
+            </span>
+            <div>
+              <h3>{item.title}</h3>
+              {item.body ? <p>{item.body}</p> : null}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
+export function PullQuote({ quote, source }: { quote: string; source?: string }) {
+  return (
+    <figure className="pull-quote">
+      <blockquote>{quote}</blockquote>
+      {source ? <figcaption>{source}</figcaption> : null}
+    </figure>
   );
 }
 
