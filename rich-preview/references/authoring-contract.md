@@ -17,7 +17,7 @@ Compose the page in this order:
 3. Add comparisons only for explicit before/after or current/proposed deltas.
 4. Add a timeline only when the source states an order.
 5. Add risks and actions only when the source states them or supports the exact wording.
-6. Add the smallest useful set of diagrams or charts.
+6. When the source explicitly states a multi-step process, conditional branch, dependency, sequence, or quantitative comparison, add the smallest useful matching diagram or chart. Render every visual spec in `report-data.json` with the corresponding supported component in `report.mdx`.
 7. Finish with the complete canonical document and raw verification view.
 
 An editorial sentence may paraphrase cited evidence, but it may not introduce a fact, decision, relationship, number, owner, status, or priority absent from that evidence.

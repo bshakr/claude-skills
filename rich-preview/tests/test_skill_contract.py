@@ -36,6 +36,8 @@ class SkillContractTests(unittest.TestCase):
             "Read `references/authoring-contract.md` completely",
             "report-data.json",
             "report.mdx",
+            "include the smallest useful matching visual",
+            "Render every included visual spec",
             "Reject unsupported visuals",
             "scripts/validate_preview.py",
             "scripts/serve_preview.py",

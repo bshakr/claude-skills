@@ -19,7 +19,7 @@ Turn a completed source document into a local editorial webpage. The editorial l
 
    Do not replace a non-empty output directory without explicit user approval. The initializer stores the byte-identical canonical source at `src/content/source.md` and records its SHA-256 digest.
 3. Read `references/authoring-contract.md` completely before authoring the preview.
-4. Inspect the canonical source nodes. Author the editorial data in `src/content/report-data.json`, then compose supported editorial sections, diagrams, and charts in `src/report.mdx`. Every derived claim and visual element must cite an exact source span.
+4. Inspect the canonical source nodes. Author the editorial data in `src/content/report-data.json`, then compose supported editorial sections, diagrams, and charts in `src/report.mdx`. When the source explicitly states a multi-step process, conditional branch, dependency, sequence, or quantitative comparison, include the smallest useful matching visual. Render every included visual spec with its supported component in `src/report.mdx`. Every derived claim and visual element must cite an exact source span. Sparse sources may remain editorial-only.
 5. Reject unsupported visuals. If the source does not contain the relationships or numeric values required by a supported component, omit the visual and rely on the complete document.
 6. Validate from the skill directory:
 
