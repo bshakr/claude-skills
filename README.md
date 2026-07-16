@@ -1,6 +1,8 @@
-# claude-skills
+# agent-skills
 
-Personal collection of [Claude Code skills](https://docs.claude.com/en/docs/claude-code/skills) for everyday workflows.
+Personal collection of portable, [Agent Skills](https://agentskills.io)-compatible workflows for Claude Code, Codex, and other supporting agent harnesses.
+
+Repository: https://github.com/bshakr/agent-skills
 
 ## Skills
 
@@ -10,22 +12,35 @@ Personal collection of [Claude Code skills](https://docs.claude.com/en/docs/clau
 | [`pr-comments`](./pr-comments) | 1.1.0 | Resolve PR review comments end-to-end — fetch, evaluate validity, fix valid ones, commit, push, and draft replies for approval. |
 | [`ship-ticket`](./ship-ticket) | 1.0.0 | Ship a Linear ticket end-to-end — worktree off latest main, planned TDD, mandatory `/review`, PR with traceable review SHA. |
 | [`test-plan-builder`](./test-plan-builder) | 1.0.0 | Build a code-grounded, multi-tab QA test plan for a feature spanning one or more repos — fans out parallel research subagents per repo/layer, reconciles what's actually implemented vs the spec, and outputs a formatted spreadsheet. |
+| [`rich-preview`](./rich-preview) | — | Turn completed Markdown plans, summaries, and reports into polished, lossless local MDX webpages with source-grounded editorial highlights, diagrams, and charts. |
 
 ## Install
 
-Clone the repo somewhere stable, then symlink each skill into `~/.claude/skills/`:
+Clone the repo somewhere stable:
 
 ```bash
-git clone https://github.com/bshakr/claude-skills ~/code/claude-skills
-
-mkdir -p ~/.claude/skills
-ln -s ~/code/claude-skills/standup ~/.claude/skills/standup
-ln -s ~/code/claude-skills/pr-comments ~/.claude/skills/pr-comments
-ln -s ~/code/claude-skills/ship-ticket ~/.claude/skills/ship-ticket
-ln -s ~/code/claude-skills/test-plan-builder ~/.claude/skills/test-plan-builder
+git clone https://github.com/bshakr/agent-skills ~/code/agent-skills
 ```
 
-Symlinks mean `git pull` instantly updates the live skill. Restart your Claude Code session afterwards so the skill index reloads.
+Symlink the skills you want into Claude Code:
+
+```bash
+mkdir -p ~/.claude/skills
+ln -s ~/code/agent-skills/standup ~/.claude/skills/standup
+ln -s ~/code/agent-skills/pr-comments ~/.claude/skills/pr-comments
+ln -s ~/code/agent-skills/ship-ticket ~/.claude/skills/ship-ticket
+ln -s ~/code/agent-skills/test-plan-builder ~/.claude/skills/test-plan-builder
+ln -s ~/code/agent-skills/rich-preview ~/.claude/skills/rich-preview
+```
+
+Or into Codex:
+
+```bash
+mkdir -p ~/.codex/skills
+ln -s ~/code/agent-skills/rich-preview ~/.codex/skills/rich-preview
+```
+
+Symlinks mean `git pull` instantly updates the live skill. Restart the agent session afterwards so its skill index reloads.
 
 ### Per-skill setup
 
@@ -40,7 +55,7 @@ Skills with a `version:` field in their frontmatter self-check for updates on ea
 To update manually:
 
 ```bash
-git -C ~/code/claude-skills pull --ff-only
+git -C ~/code/agent-skills pull --ff-only
 ```
 
 ## Versioning
@@ -57,7 +72,7 @@ Each `SKILL.md` carries the version in its frontmatter:
 ---
 name: standup
 version: 1.1.0
-repo: https://github.com/bshakr/claude-skills
+repo: https://github.com/bshakr/agent-skills
 skill_path: standup
 ---
 ```
