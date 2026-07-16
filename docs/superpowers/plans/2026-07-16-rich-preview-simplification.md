@@ -113,7 +113,8 @@ rich-preview/
   anywhere outside package.json. `build` script = `vite build` (no `tsc -b`).
 - **SKILL.md** (≤60 lines): workflow =
   1. Save the source markdown verbatim.
-  2. `python scripts/init_preview.py <source.md> --output <dir> --slug <slug>`
+  2. `python scripts/init_preview.py <source.md> --output <dir>` (the `--slug`
+     argument was dropped — its only consumer was the deleted manifest)
   3. Read `references/components.md`; overwrite `src/report.mdx` with an editorial
      page: hero, a few grounded highlights, timeline/risks/actions only when the
      source states them, mermaid diagrams only for structure the source describes,

@@ -5,15 +5,24 @@ mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "stric
 
 export function Mermaid({ chart, title }: { chart: string; title?: string }) {
   const [svg, setSvg] = useState("");
+  const [error, setError] = useState("");
   const id = useId().replace(/:/g, "");
 
   useEffect(() => {
     let active = true;
-    mermaid.render(`mermaid-${id}`, chart.trim()).then(({ svg }) => {
-      if (active) {
-        setSvg(svg);
-      }
-    });
+    mermaid.render(`mermaid-${id}`, chart.trim()).then(
+      ({ svg }) => {
+        if (active) {
+          setError("");
+          setSvg(svg);
+        }
+      },
+      (reason: unknown) => {
+        if (active) {
+          setError(reason instanceof Error ? reason.message : String(reason));
+        }
+      },
+    );
     return () => {
       active = false;
     };
@@ -22,7 +31,11 @@ export function Mermaid({ chart, title }: { chart: string; title?: string }) {
   return (
     <figure className="mermaid-figure">
       {title ? <figcaption className="mermaid-title">{title}</figcaption> : null}
-      <div className="mermaid-canvas" dangerouslySetInnerHTML={{ __html: svg }} />
+      {error ? (
+        <pre className="mermaid-error">{error}</pre>
+      ) : (
+        <div className="mermaid-canvas" dangerouslySetInnerHTML={{ __html: svg }} />
+      )}
     </figure>
   );
 }

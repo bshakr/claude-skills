@@ -322,6 +322,18 @@ p {
   height: auto;
 }
 
+.mermaid-error {
+  max-width: 100%;
+  overflow: auto;
+  padding: 1rem;
+  border-left: 0.35rem solid var(--danger);
+  border-radius: 0.7rem;
+  color: var(--danger);
+  background: var(--danger-surface);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .timeline-list,
 .editorial-list {
   margin: 0;
