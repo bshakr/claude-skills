@@ -45,6 +45,9 @@ class SkillContractTests(unittest.TestCase):
     def test_version_check_probes_both_harnesses(self) -> None:
         self.assertIn('"$HOME/.claude/skills/$SKILL_NAME"', self.skill)
         self.assertIn('"$HOME/.codex/skills/$SKILL_NAME"', self.skill)
+
+    def test_version_check_guards_unresolved_skill_dir(self) -> None:
+        self.assertIn('if [ -z "$SKILL_DIR" ]; then', self.skill)
         self.assertIn("SKILL_NOT_FOUND", self.skill)
 
     def test_workflow_covers_add_author_serve(self) -> None:
