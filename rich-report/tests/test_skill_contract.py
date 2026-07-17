@@ -40,7 +40,11 @@ class SkillContractTests(unittest.TestCase):
             'RAW_URL="https://raw.githubusercontent.com/bshakr/agent-skills/main/rich-report/SKILL.md"',
             self.skill,
         )
-        self.assertIn('SKILL_DIR="$HOME/.claude/skills/rich-report"', self.skill)
+        self.assertIn('SKILL_NAME="rich-report"', self.skill)
+
+    def test_version_check_probes_both_harnesses(self) -> None:
+        self.assertIn('"$HOME/.claude/skills/$SKILL_NAME"', self.skill)
+        self.assertIn('"$HOME/.codex/skills/$SKILL_NAME"', self.skill)
 
     def test_workflow_covers_add_author_serve(self) -> None:
         required_phrases = (

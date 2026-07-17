@@ -16,8 +16,15 @@ full source is always preserved and rendered underneath the editorial layer.
 
 ## Step 0: Version check (run first, every invocation)
 
+The probe covers the Claude Code and Codex install locations. On any other harness,
+set `SKILL_DIR` to wherever this `SKILL.md` is installed before running the block.
+
 ```bash
-SKILL_DIR="$HOME/.claude/skills/rich-report"
+SKILL_NAME="rich-report"
+SKILL_DIR=""
+for d in "$HOME/.claude/skills/$SKILL_NAME" "$HOME/.codex/skills/$SKILL_NAME"; do
+  [ -f "$d/SKILL.md" ] && SKILL_DIR="$d" && break
+done
 CACHE_FILE="$SKILL_DIR/.last-version-check"
 RAW_URL="https://raw.githubusercontent.com/bshakr/agent-skills/main/rich-report/SKILL.md"
 LOCAL_VERSION=$(awk -F': ' '/^version:/ {print $2; exit}' "$SKILL_DIR/SKILL.md")
@@ -36,7 +43,17 @@ else
 fi
 ```
 
-If the output starts with `UPDATE_AVAILABLE`, ask the user before proceeding, then `git -C ~/code/claude-skills pull --ff-only`.
+If the output starts with `UPDATE_AVAILABLE`, ask the user before proceeding. On yes,
+resolve the clone behind the install and pull:
+
+```bash
+REPO_DIR=$(git -C "$(dirname "$(readlink -f "$SKILL_DIR/SKILL.md")")" rev-parse --show-toplevel 2>/dev/null)
+git -C "$REPO_DIR" pull --ff-only
+```
+
+If no git repo is found (the skill was copied, not symlinked), tell the user to
+reinstall from https://github.com/bshakr/agent-skills instead. Then re-read this
+`SKILL.md` from disk before continuing.
 
 ## Workflow
 
