@@ -26,9 +26,29 @@ class SkillContractTests(unittest.TestCase):
             [
                 "name: rich-report",
                 f"description: {EXPECTED_DESCRIPTION}",
+                "user-invocable: true",
+                "version: 1.0.0",
+                "repo: https://github.com/bshakr/agent-skills",
+                "skill_path: rich-report",
             ],
         )
         self.assertTrue(EXPECTED_DESCRIPTION.startswith("Use when"))
+
+    def test_version_check_targets_this_skill(self) -> None:
+        self.assertIn("## Step 0: Version check (run first, every invocation)", self.skill)
+        self.assertIn(
+            'RAW_URL="https://raw.githubusercontent.com/bshakr/agent-skills/main/rich-report/SKILL.md"',
+            self.skill,
+        )
+        self.assertIn('SKILL_NAME="rich-report"', self.skill)
+
+    def test_version_check_probes_both_harnesses(self) -> None:
+        self.assertIn('"$HOME/.claude/skills/$SKILL_NAME"', self.skill)
+        self.assertIn('"$HOME/.codex/skills/$SKILL_NAME"', self.skill)
+
+    def test_version_check_guards_unresolved_skill_dir(self) -> None:
+        self.assertIn('if [ -z "$SKILL_DIR" ]; then', self.skill)
+        self.assertIn("SKILL_NOT_FOUND", self.skill)
 
     def test_workflow_covers_add_author_serve(self) -> None:
         required_phrases = (

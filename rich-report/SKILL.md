@@ -1,6 +1,10 @@
 ---
 name: rich-report
 description: Use when a completed plan, investigation, summary, or decision memo needs a polished local webpage — an editorial layer of highlights, timelines, risks, and mermaid diagrams over the full source — added to a local report hub served on localhost.
+user-invocable: true
+version: 1.0.0
+repo: https://github.com/bshakr/agent-skills
+skill_path: rich-report
 ---
 
 # Rich Report
@@ -9,6 +13,54 @@ Turn a finished Markdown document into a beautiful local web page. Reports are a
 to a single hub at `~/.rich-report` that serves them all from one long-running
 server and shows an index grouped by project. You author one MDX file per report; the
 full source is always preserved and rendered underneath the editorial layer.
+
+## Step 0: Version check (run first, every invocation)
+
+The probe covers the Claude Code and Codex install locations. On any other harness,
+set `SKILL_DIR` to wherever this `SKILL.md` is installed before running the block.
+
+```bash
+SKILL_NAME="rich-report"
+SKILL_DIR=""
+for d in "$HOME/.claude/skills/$SKILL_NAME" "$HOME/.codex/skills/$SKILL_NAME"; do
+  [ -f "$d/SKILL.md" ] && SKILL_DIR="$d" && break
+done
+if [ -z "$SKILL_DIR" ]; then
+  echo "SKILL_NOT_FOUND - set SKILL_DIR to this skill's install directory and re-run this block"
+else
+  CACHE_FILE="$SKILL_DIR/.last-version-check"
+  RAW_URL="https://raw.githubusercontent.com/bshakr/agent-skills/main/rich-report/SKILL.md"
+  LOCAL_VERSION=$(awk -F': ' '/^version:/ {print $2; exit}' "$SKILL_DIR/SKILL.md")
+  NOW=$(date +%s)
+  LAST_CHECK=$(cat "$CACHE_FILE" 2>/dev/null || echo 0)
+  if [ $((NOW - LAST_CHECK)) -gt 86400 ]; then
+    REMOTE_VERSION=$(curl -fsSL "$RAW_URL" 2>/dev/null | awk -F': ' '/^version:/ {print $2; exit}')
+    echo "$NOW" > "$CACHE_FILE"
+    if [ -n "$REMOTE_VERSION" ] && [ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]; then
+      echo "UPDATE_AVAILABLE local=$LOCAL_VERSION remote=$REMOTE_VERSION"
+    else
+      echo "UP_TO_DATE version=$LOCAL_VERSION"
+    fi
+  else
+    echo "SKIP_CHECK version=$LOCAL_VERSION"
+  fi
+fi
+```
+
+If it prints `SKILL_NOT_FOUND`, continue the task with the current version rather
+than blocking on the check.
+
+If the output starts with `UPDATE_AVAILABLE`, ask the user before proceeding. On yes,
+resolve the clone behind the install and pull:
+
+```bash
+REPO_DIR=$(git -C "$(dirname "$(readlink -f "$SKILL_DIR/SKILL.md")")" rev-parse --show-toplevel 2>/dev/null)
+git -C "$REPO_DIR" pull --ff-only
+```
+
+If no git repo is found (the skill was copied, not symlinked), tell the user to
+reinstall from https://github.com/bshakr/agent-skills instead. Then re-read this
+`SKILL.md` from disk before continuing.
 
 ## Workflow
 
