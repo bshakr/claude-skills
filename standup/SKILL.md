@@ -2,8 +2,8 @@
 name: standup
 description: Generate a daily standup status report against weekly goals, cross-referencing Linear tickets and GitHub PRs, formatted for Slack.
 user-invocable: true
-version: 1.4.0
-repo: https://github.com/bshakr/claude-skills
+version: 1.4.1
+repo: https://github.com/bshakr/agent-skills
 skill_path: standup
 ---
 
@@ -13,43 +13,56 @@ Generate a standup status report by cross-referencing your weekly goals with Lin
 
 ## Step 0: Version check (run first, every invocation)
 
-Before doing anything else, check if a newer version of this skill is available. Skip the network call if it's been done in the last 24 hours.
+Before doing anything else, check if a newer version of this skill is available. Skip the network call if it's been done in the last 24 hours. The probe covers the Claude Code and Codex install locations; on any other harness, set `SKILL_DIR` to wherever this `SKILL.md` is installed before running the block.
 
 ```bash
-SKILL_DIR="$HOME/.claude/skills/standup"
-CACHE_FILE="$SKILL_DIR/.last-version-check"
-RAW_URL="https://raw.githubusercontent.com/bshakr/claude-skills/main/standup/SKILL.md"
-LOCAL_VERSION=$(awk -F': ' '/^version:/ {print $2; exit}' "$SKILL_DIR/SKILL.md")
-NOW=$(date +%s)
-LAST_CHECK=$(cat "$CACHE_FILE" 2>/dev/null || echo 0)
-
-if [ $((NOW - LAST_CHECK)) -gt 86400 ]; then
-  REMOTE_VERSION=$(curl -fsSL "$RAW_URL" 2>/dev/null | awk -F': ' '/^version:/ {print $2; exit}')
-  echo "$NOW" > "$CACHE_FILE"
-  if [ -n "$REMOTE_VERSION" ] && [ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]; then
-    echo "UPDATE_AVAILABLE local=$LOCAL_VERSION remote=$REMOTE_VERSION"
-  else
-    echo "UP_TO_DATE version=$LOCAL_VERSION"
-  fi
+SKILL_NAME="standup"
+SKILL_DIR=""
+for d in "$HOME/.claude/skills/$SKILL_NAME" "$HOME/.codex/skills/$SKILL_NAME"; do
+  [ -f "$d/SKILL.md" ] && SKILL_DIR="$d" && break
+done
+if [ -z "$SKILL_DIR" ]; then
+  echo "SKILL_NOT_FOUND - set SKILL_DIR to this skill's install directory and re-run this block"
 else
-  echo "SKIP_CHECK version=$LOCAL_VERSION"
+  CACHE_FILE="$SKILL_DIR/.last-version-check"
+  RAW_URL="https://raw.githubusercontent.com/bshakr/agent-skills/main/standup/SKILL.md"
+  LOCAL_VERSION=$(awk -F': ' '/^version:/ {print $2; exit}' "$SKILL_DIR/SKILL.md")
+  NOW=$(date +%s)
+  LAST_CHECK=$(cat "$CACHE_FILE" 2>/dev/null || echo 0)
+
+  if [ $((NOW - LAST_CHECK)) -gt 86400 ]; then
+    REMOTE_VERSION=$(curl -fsSL "$RAW_URL" 2>/dev/null | awk -F': ' '/^version:/ {print $2; exit}')
+    echo "$NOW" > "$CACHE_FILE"
+    if [ -n "$REMOTE_VERSION" ] && [ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]; then
+      echo "UPDATE_AVAILABLE local=$LOCAL_VERSION remote=$REMOTE_VERSION"
+    else
+      echo "UP_TO_DATE version=$LOCAL_VERSION"
+    fi
+  else
+    echo "SKIP_CHECK version=$LOCAL_VERSION"
+  fi
 fi
 ```
+
+If it prints `SKILL_NOT_FOUND`, continue the task with the current version rather
+than blocking on the check.
 
 If the output starts with `UPDATE_AVAILABLE`, ask the user before proceeding:
 
 > standup skill update available: `{local}` → `{remote}`. Pull updates? (y/n)
 
-If yes, run:
+If yes, resolve the clone behind the install and pull:
 
 ```bash
-# If installed via git clone + symlink:
-git -C ~/code/claude-skills pull --ff-only
-
-# Then re-read this skill from disk before continuing.
+REPO_DIR=$(git -C "$(dirname "$(readlink -f "$SKILL_DIR/SKILL.md")")" rev-parse --show-toplevel 2>/dev/null)
+if [ -n "$REPO_DIR" ]; then
+  git -C "$REPO_DIR" pull --ff-only
+else
+  echo "NO_REPO_FOUND - reinstall from https://github.com/bshakr/agent-skills"
+fi
 ```
 
-If the user declines or the skill isn't installed via git (no `.git` dir resolvable), continue with the current version and don't pester again until the next 24h window.
+If it prints `NO_REPO_FOUND` (the skill was copied, not symlinked), reinstall from https://github.com/bshakr/agent-skills instead. Then re-read this skill from disk before continuing. If the user declines, continue with the current version and don't pester again until the next 24h window.
 
 If the output is `UP_TO_DATE` or `SKIP_CHECK`, proceed silently to Step 1.
 
