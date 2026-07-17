@@ -44,6 +44,10 @@ full source is always preserved and rendered underneath the editorial layer.
    python scripts/serve_hub.py
    ```
 
+   The server detaches into its own session and keeps running after this Claude
+   session ends; the command verifies the hub is live, prints the URL, and exits.
+   Use `--status` to check whether it is up and `--stop` to shut it down.
+
    Verify the report with
    `curl --fail --silent -o /dev/null -w '%{http_code}\n' <report-url>`. To build-check
    every report at once, run `python scripts/validate_hub.py`.
