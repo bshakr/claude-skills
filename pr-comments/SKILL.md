@@ -56,10 +56,14 @@ If yes, resolve the clone behind the install and pull:
 
 ```bash
 REPO_DIR=$(git -C "$(dirname "$(readlink -f "$SKILL_DIR/SKILL.md")")" rev-parse --show-toplevel 2>/dev/null)
-git -C "$REPO_DIR" pull --ff-only
+if [ -n "$REPO_DIR" ]; then
+  git -C "$REPO_DIR" pull --ff-only
+else
+  echo "NO_REPO_FOUND - reinstall from https://github.com/bshakr/agent-skills"
+fi
 ```
 
-If no git repo is found (the skill was copied, not symlinked), reinstall from https://github.com/bshakr/agent-skills instead. Then re-read this skill from disk before continuing. If the user declines, continue with the current version and don't pester again until the next 24h window.
+If it prints `NO_REPO_FOUND` (the skill was copied, not symlinked), reinstall from https://github.com/bshakr/agent-skills instead. Then re-read this skill from disk before continuing. If the user declines, continue with the current version and don't pester again until the next 24h window.
 
 If the output is `UP_TO_DATE` or `SKIP_CHECK`, proceed silently to Step 1.
 
