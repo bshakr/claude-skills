@@ -1,6 +1,10 @@
 ---
 name: rich-report
 description: Use when a completed plan, investigation, summary, or decision memo needs a polished local webpage — an editorial layer of highlights, timelines, risks, and mermaid diagrams over the full source — added to a local report hub served on localhost.
+user-invocable: true
+version: 1.0.0
+repo: https://github.com/bshakr/agent-skills
+skill_path: rich-report
 ---
 
 # Rich Report
@@ -9,6 +13,30 @@ Turn a finished Markdown document into a beautiful local web page. Reports are a
 to a single hub at `~/.rich-report` that serves them all from one long-running
 server and shows an index grouped by project. You author one MDX file per report; the
 full source is always preserved and rendered underneath the editorial layer.
+
+## Step 0: Version check (run first, every invocation)
+
+```bash
+SKILL_DIR="$HOME/.claude/skills/rich-report"
+CACHE_FILE="$SKILL_DIR/.last-version-check"
+RAW_URL="https://raw.githubusercontent.com/bshakr/agent-skills/main/rich-report/SKILL.md"
+LOCAL_VERSION=$(awk -F': ' '/^version:/ {print $2; exit}' "$SKILL_DIR/SKILL.md")
+NOW=$(date +%s)
+LAST_CHECK=$(cat "$CACHE_FILE" 2>/dev/null || echo 0)
+if [ $((NOW - LAST_CHECK)) -gt 86400 ]; then
+  REMOTE_VERSION=$(curl -fsSL "$RAW_URL" 2>/dev/null | awk -F': ' '/^version:/ {print $2; exit}')
+  echo "$NOW" > "$CACHE_FILE"
+  if [ -n "$REMOTE_VERSION" ] && [ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]; then
+    echo "UPDATE_AVAILABLE local=$LOCAL_VERSION remote=$REMOTE_VERSION"
+  else
+    echo "UP_TO_DATE version=$LOCAL_VERSION"
+  fi
+else
+  echo "SKIP_CHECK version=$LOCAL_VERSION"
+fi
+```
+
+If the output starts with `UPDATE_AVAILABLE`, ask the user before proceeding, then `git -C ~/code/claude-skills pull --ff-only`.
 
 ## Workflow
 
