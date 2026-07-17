@@ -55,11 +55,15 @@ resolve the clone behind the install and pull:
 
 ```bash
 REPO_DIR=$(git -C "$(dirname "$(readlink -f "$SKILL_DIR/SKILL.md")")" rev-parse --show-toplevel 2>/dev/null)
-git -C "$REPO_DIR" pull --ff-only
+if [ -n "$REPO_DIR" ]; then
+  git -C "$REPO_DIR" pull --ff-only
+else
+  echo "NO_REPO_FOUND - reinstall from https://github.com/bshakr/agent-skills"
+fi
 ```
 
-If no git repo is found (the skill was copied, not symlinked), tell the user to
-reinstall from https://github.com/bshakr/agent-skills instead. Then re-read this
+If it prints `NO_REPO_FOUND` (the skill was copied, not symlinked), tell the user
+to reinstall from https://github.com/bshakr/agent-skills instead. Then re-read this
 `SKILL.md` from disk before continuing.
 
 ## Workflow
