@@ -191,6 +191,12 @@ Use when: exact wording matters — regulatory copy, an error message, a user qu
 Plain Markdown tables (GFM pipe syntax) inside a report get the system treatment —
 small-caps header, hairline rows — automatically. Use them for small, tabular facts.
 
+Tables only parse as Markdown at the TOP LEVEL of the MDX body (blocks separated by
+blank lines). Inside a JSX expression — e.g. the `export const Report = ({ source }) =>
+(…)` wrapper — pipe rows are plain text. To use a table, author the page as top-level
+MDX blocks and reference the source with `<CompleteDocument source={props.source} />`
+at the end instead of wrapping everything in one component.
+
 ```mdx
 | Metric | Before | After |
 | --- | --- | --- |
