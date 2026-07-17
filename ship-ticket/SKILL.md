@@ -2,8 +2,8 @@
 name: ship-ticket
 description: End-to-end workflow for shipping a Linear ticket. Sets up a fresh worktree off origin/main, plans the work, runs TDD-style implementation, runs /review, addresses findings, and opens a PR. Invoke when the user says "ship X", "tackle the next ticket", "/ship-ticket BLO-XXX", or any phrasing that means "do a whole ticket end-to-end".
 user-invocable: true
-version: 1.0.0
-repo: https://github.com/bshakr/claude-skills
+version: 1.0.1
+repo: https://github.com/bshakr/agent-skills
 skill_path: ship-ticket
 ---
 
@@ -17,12 +17,16 @@ Every ticket. Every size. Every category. No "diff is small" or "deletions only"
 
 ## Step 0: Version check (run first, every invocation)
 
-Before doing anything else, check if a newer version of this skill is available. Skip the network call if it's been done in the last 24 hours.
+Before doing anything else, check if a newer version of this skill is available. Skip the network call if it's been done in the last 24 hours. The probe covers the Claude Code and Codex install locations; on any other harness, set `SKILL_DIR` to wherever this `SKILL.md` is installed before running the block.
 
 ```bash
-SKILL_DIR="$HOME/.claude/skills/ship-ticket"
+SKILL_NAME="ship-ticket"
+SKILL_DIR=""
+for d in "$HOME/.claude/skills/$SKILL_NAME" "$HOME/.codex/skills/$SKILL_NAME"; do
+  [ -f "$d/SKILL.md" ] && SKILL_DIR="$d" && break
+done
 CACHE_FILE="$SKILL_DIR/.last-version-check"
-RAW_URL="https://raw.githubusercontent.com/bshakr/claude-skills/main/ship-ticket/SKILL.md"
+RAW_URL="https://raw.githubusercontent.com/bshakr/agent-skills/main/ship-ticket/SKILL.md"
 LOCAL_VERSION=$(awk -F': ' '/^version:/ {print $2; exit}' "$SKILL_DIR/SKILL.md")
 NOW=$(date +%s)
 LAST_CHECK=$(cat "$CACHE_FILE" 2>/dev/null || echo 0)
@@ -44,7 +48,14 @@ If the output starts with `UPDATE_AVAILABLE`, ask the user before proceeding:
 
 > ship-ticket skill update available: `{local}` → `{remote}`. Pull updates? (y/n)
 
-If yes, run `git -C ~/code/claude-skills pull --ff-only` and re-read this skill from disk before continuing. If the user declines or the skill isn't installed via git, continue with the current version and don't pester again until the next 24h window.
+If yes, resolve the clone behind the install and pull:
+
+```bash
+REPO_DIR=$(git -C "$(dirname "$(readlink -f "$SKILL_DIR/SKILL.md")")" rev-parse --show-toplevel 2>/dev/null)
+git -C "$REPO_DIR" pull --ff-only
+```
+
+If no git repo is found (the skill was copied, not symlinked), reinstall from https://github.com/bshakr/agent-skills instead. Then re-read this skill from disk before continuing. If the user declines, continue with the current version and don't pester again until the next 24h window.
 
 If the output is `UP_TO_DATE` or `SKIP_CHECK`, proceed silently to Step 1.
 

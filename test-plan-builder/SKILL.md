@@ -2,8 +2,8 @@
 name: test-plan-builder
 description: Use when you need a comprehensive QA/test plan for a feature that spans one or more repos and should be grounded in what the code ACTUALLY implements (not just the tickets) — e.g. "write a test plan", "what do we need to test before go-live", "production E2E test scenarios", "QA spreadsheet". Fans out parallel research subagents per repo/layer, reconciles reality vs the spec, and produces a multi-tab spreadsheet.
 user-invocable: true
-version: 1.0.0
-repo: https://github.com/bshakr/claude-skills
+version: 1.0.1
+repo: https://github.com/bshakr/agent-skills
 skill_path: test-plan-builder
 ---
 
@@ -15,10 +15,17 @@ Core principle: **the code is the source of truth, not the ticket.** Tickets des
 
 ## Step 0: Version check (run first, every invocation)
 
+The probe covers the Claude Code and Codex install locations; on any other harness,
+set `SKILL_DIR` to wherever this `SKILL.md` is installed before running the block.
+
 ```bash
-SKILL_DIR="$HOME/.claude/skills/test-plan-builder"
+SKILL_NAME="test-plan-builder"
+SKILL_DIR=""
+for d in "$HOME/.claude/skills/$SKILL_NAME" "$HOME/.codex/skills/$SKILL_NAME"; do
+  [ -f "$d/SKILL.md" ] && SKILL_DIR="$d" && break
+done
 CACHE_FILE="$SKILL_DIR/.last-version-check"
-RAW_URL="https://raw.githubusercontent.com/bshakr/claude-skills/main/test-plan-builder/SKILL.md"
+RAW_URL="https://raw.githubusercontent.com/bshakr/agent-skills/main/test-plan-builder/SKILL.md"
 LOCAL_VERSION=$(awk -F': ' '/^version:/ {print $2; exit}' "$SKILL_DIR/SKILL.md")
 NOW=$(date +%s)
 LAST_CHECK=$(cat "$CACHE_FILE" 2>/dev/null || echo 0)
@@ -35,7 +42,17 @@ else
 fi
 ```
 
-If the output starts with `UPDATE_AVAILABLE`, ask the user before proceeding, then `git -C ~/code/claude-skills pull --ff-only`.
+If the output starts with `UPDATE_AVAILABLE`, ask the user before proceeding. On yes,
+resolve the clone behind the install and pull:
+
+```bash
+REPO_DIR=$(git -C "$(dirname "$(readlink -f "$SKILL_DIR/SKILL.md")")" rev-parse --show-toplevel 2>/dev/null)
+git -C "$REPO_DIR" pull --ff-only
+```
+
+If no git repo is found (the skill was copied, not symlinked), reinstall from
+https://github.com/bshakr/agent-skills instead. Then re-read this `SKILL.md` from
+disk before continuing.
 
 ## Decide the mode FIRST (do not skip)
 
