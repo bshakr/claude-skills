@@ -21,24 +21,31 @@ SKILL_DIR=""
 for d in "$HOME/.claude/skills/$SKILL_NAME" "$HOME/.codex/skills/$SKILL_NAME"; do
   [ -f "$d/SKILL.md" ] && SKILL_DIR="$d" && break
 done
-CACHE_FILE="$SKILL_DIR/.last-version-check"
-RAW_URL="https://raw.githubusercontent.com/bshakr/agent-skills/main/standup/SKILL.md"
-LOCAL_VERSION=$(awk -F': ' '/^version:/ {print $2; exit}' "$SKILL_DIR/SKILL.md")
-NOW=$(date +%s)
-LAST_CHECK=$(cat "$CACHE_FILE" 2>/dev/null || echo 0)
-
-if [ $((NOW - LAST_CHECK)) -gt 86400 ]; then
-  REMOTE_VERSION=$(curl -fsSL "$RAW_URL" 2>/dev/null | awk -F': ' '/^version:/ {print $2; exit}')
-  echo "$NOW" > "$CACHE_FILE"
-  if [ -n "$REMOTE_VERSION" ] && [ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]; then
-    echo "UPDATE_AVAILABLE local=$LOCAL_VERSION remote=$REMOTE_VERSION"
-  else
-    echo "UP_TO_DATE version=$LOCAL_VERSION"
-  fi
+if [ -z "$SKILL_DIR" ]; then
+  echo "SKILL_NOT_FOUND - set SKILL_DIR to this skill's install directory and re-run this block"
 else
-  echo "SKIP_CHECK version=$LOCAL_VERSION"
+  CACHE_FILE="$SKILL_DIR/.last-version-check"
+  RAW_URL="https://raw.githubusercontent.com/bshakr/agent-skills/main/standup/SKILL.md"
+  LOCAL_VERSION=$(awk -F': ' '/^version:/ {print $2; exit}' "$SKILL_DIR/SKILL.md")
+  NOW=$(date +%s)
+  LAST_CHECK=$(cat "$CACHE_FILE" 2>/dev/null || echo 0)
+
+  if [ $((NOW - LAST_CHECK)) -gt 86400 ]; then
+    REMOTE_VERSION=$(curl -fsSL "$RAW_URL" 2>/dev/null | awk -F': ' '/^version:/ {print $2; exit}')
+    echo "$NOW" > "$CACHE_FILE"
+    if [ -n "$REMOTE_VERSION" ] && [ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]; then
+      echo "UPDATE_AVAILABLE local=$LOCAL_VERSION remote=$REMOTE_VERSION"
+    else
+      echo "UP_TO_DATE version=$LOCAL_VERSION"
+    fi
+  else
+    echo "SKIP_CHECK version=$LOCAL_VERSION"
+  fi
 fi
 ```
+
+If it prints `SKILL_NOT_FOUND`, continue the task with the current version rather
+than blocking on the check.
 
 If the output starts with `UPDATE_AVAILABLE`, ask the user before proceeding:
 
