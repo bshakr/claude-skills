@@ -2,20 +2,17 @@ import { Hero, HighlightGrid, ComparisonGrid, Timeline, RiskList, ActionList, Co
 import { Mermaid } from "@components/mermaid"
 import "@styles"
 
-export const Report = ({ source }) => (
-  <div className="preview-shell">
-    <Hero
-      eyebrow="Preview"
-      title="Replace with the source title"
-      lede="Replace with a one-sentence summary taken from the source."
-      status="Draft"
-    />
-    {/*
-      Author editorial sections here from references/components.md.
-      Use only facts the source states, and keep CompleteDocument last.
-    */}
-    <CompleteDocument source={source} />
-  </div>
-)
+<Hero
+  eyebrow="Preview"
+  title="Replace with the source title"
+  lede="Replace with a one-sentence summary taken from the source."
+  status="Draft"
+/>
 
-<Report {...props} />
+{/*
+  Author editorial sections here from references/components.md, as top-level
+  MDX blocks separated by blank lines. Use only facts the source states, and
+  keep CompleteDocument last.
+*/}
+
+<CompleteDocument source={props.source} />

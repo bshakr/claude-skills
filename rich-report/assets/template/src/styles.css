@@ -97,6 +97,78 @@ p {
   padding-block: clamp(1rem, 4vw, 3.5rem) 4rem;
 }
 
+/* The shell is provided once by the app wrapper. A report that still nests its
+   own .preview-shell must not stack a second column or padding band. */
+.preview-shell .preview-shell {
+  width: 100%;
+  padding-block: 0;
+  margin-inline: 0;
+}
+
+/* Top-level prose authored as MDX flow content between editorial sections.
+   Scoped to direct children so it never reaches component internals or the
+   rendered source document. */
+.preview-shell > h2,
+.preview-shell > h3 {
+  max-width: 52rem;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.preview-shell > h2 {
+  margin: clamp(1.75rem, 4vw, 2.75rem) 0 1rem;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+}
+
+.preview-shell > h3 {
+  margin: clamp(1.5rem, 3.5vw, 2.25rem) 0 0.7rem;
+  font-size: clamp(1.2rem, 2.4vw, 1.45rem);
+}
+
+.preview-shell > p,
+.preview-shell > ul,
+.preview-shell > ol {
+  max-width: 52rem;
+  margin: 0 0 1.15rem;
+  color: var(--ink-soft);
+  font-size: 1rem;
+}
+
+.preview-shell > ul,
+.preview-shell > ol {
+  padding-left: 1.35rem;
+}
+
+.preview-shell > ul li,
+.preview-shell > ol li {
+  margin-bottom: 0.4rem;
+}
+
+.preview-shell > pre {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 1.25rem 0;
+  padding: 0.95rem 1.15rem;
+  border-radius: 0.7rem;
+  background: #2b2337;
+  color: #f3ecff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.preview-shell > h2 code,
+.preview-shell > h3 code,
+.preview-shell > p code,
+.preview-shell > ul code,
+.preview-shell > ol code {
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.35rem;
+  background: var(--warm-strong);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+}
+
 .editorial-section,
 .complete-document {
   border: 1px solid rgb(66 34 143 / 12%);
@@ -1068,22 +1140,24 @@ p {
   overflow-wrap: anywhere;
 }
 
-.preview-shell table {
-  width: 100%;
-  margin: 1.25rem 0;
+.preview-shell > table {
+  display: block;
+  max-width: 100%;
+  margin: 1.5rem 0;
+  overflow-x: auto;
   border-collapse: collapse;
   font-size: 0.9rem;
 }
 
-.preview-shell th,
-.preview-shell td {
+.preview-shell > table th,
+.preview-shell > table td {
   padding: 0.6rem 0.8rem;
   border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: top;
 }
 
-.preview-shell thead th {
+.preview-shell > table thead th {
   border-bottom: 2px solid var(--line);
   color: var(--ink-soft);
   font-size: 0.72rem;
@@ -1092,7 +1166,7 @@ p {
   text-transform: uppercase;
 }
 
-.preview-shell tbody tr:last-child td {
+.preview-shell > table tbody tr:last-child td {
   border-bottom: none;
 }
 
@@ -1345,7 +1419,8 @@ p {
   }
 
   .wireframe,
-  .terminal__pre {
+  .terminal__pre,
+  .preview-shell > pre {
     border: 1px solid #bbb;
     background: #fff;
     color: #000;

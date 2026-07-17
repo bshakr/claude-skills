@@ -35,7 +35,7 @@ class SkillContractTests(unittest.TestCase):
             "Preserve the source",
             "scripts/add_report.py",
             "references/components.md",
-            "<CompleteDocument source={source} />",
+            "<CompleteDocument source={props.source} />",
             "scripts/serve_hub.py",
             "scripts/validate_hub.py",
             "content directory",

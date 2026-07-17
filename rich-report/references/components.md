@@ -15,6 +15,13 @@ import "@styles"
 
 Every component takes plain strings and arrays. Use only facts the source states; omit any component you have no material for.
 
+Author the page as **top-level MDX blocks** — components and Markdown separated by
+blank lines, never wrapped in a `<div>` or a component. The hub supplies the article
+shell (`.preview-shell`) around every report, and top-level Markdown headings,
+paragraphs, lists, code blocks, and tables are styled to sit with the editorial
+sections. Reference the source as `props.source` and end with
+`<CompleteDocument source={props.source} />`.
+
 ## Hero
 
 Top of the page. `status` is optional (a short badge like "Shipped" or "Draft").
@@ -188,14 +195,13 @@ Use when: exact wording matters — regulatory copy, an error message, a user qu
 
 ## Tables
 
-Plain Markdown tables (GFM pipe syntax) inside a report get the system treatment —
-small-caps header, hairline rows — automatically. Use them for small, tabular facts.
+Plain Markdown tables (GFM pipe syntax) get the system treatment — small-caps header,
+hairline rows — automatically. Use them for small, tabular facts. As with all
+top-level authoring, leave a blank line above and below the table.
 
-Tables only parse as Markdown at the TOP LEVEL of the MDX body (blocks separated by
-blank lines). Inside a JSX expression — e.g. the `export const Report = ({ source }) =>
-(…)` wrapper — pipe rows are plain text. To use a table, author the page as top-level
-MDX blocks and reference the source with `<CompleteDocument source={props.source} />`
-at the end instead of wrapping everything in one component.
+Pipe rows only parse as a table at the top level of the MDX body — inside a JSX
+expression (a `{…}` block or a component's children) they render as plain text, so
+keep tables out of those.
 
 ```mdx
 | Metric | Before | After |
@@ -209,7 +215,7 @@ at the end instead of wrapping everything in one component.
 Renders the full source (collapsible) plus the raw text. Always include it last:
 
 ```mdx
-<CompleteDocument source={source} />
+<CompleteDocument source={props.source} />
 ```
 
 ## Mermaid

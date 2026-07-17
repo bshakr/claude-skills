@@ -1,8 +1,14 @@
-import { Suspense, lazy, useMemo } from "react";
+import { Suspense, lazy, useMemo, type ReactNode } from "react";
 
 import { findMeta, loadReport, loadSource } from "./content";
 import { ErrorBoundary } from "./error-boundary";
 import { NotFound } from "./not-found";
+
+const mdxComponents = {
+  wrapper: ({ children }: { children?: ReactNode }) => (
+    <div className="preview-shell">{children}</div>
+  ),
+};
 
 export function ReportRoute({ project, slug }: { project: string; slug: string }) {
   const meta = findMeta(project, slug);
@@ -16,7 +22,7 @@ export function ReportRoute({ project, slug }: { project: string; slug: string }
     return lazy(async () => {
       const [module, text] = await Promise.all([report(), source()]);
       const Authored = module.default;
-      return { default: () => <Authored source={text} /> };
+      return { default: () => <Authored source={text} components={mdxComponents} /> };
     });
   }, [report, source]);
 

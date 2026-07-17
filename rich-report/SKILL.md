@@ -33,7 +33,9 @@ full source is always preserved and rendered underneath the editorial layer.
      `ActionList`) built only from facts the source states. Skip any section the
      source has no material for — a sparse source makes a sparse page.
    - `Mermaid` diagrams only for structure the source actually describes.
-   - Always end with `<CompleteDocument source={source} />`.
+   - Author sections as top-level MDX blocks separated by blank lines (never
+     wrap the page in a component or a `<div>` — the hub supplies the article
+     shell), and always end with `<CompleteDocument source={props.source} />`.
 
    Do not invent titles, numbers, owners, or dates that are not in the source.
 4. Serve the hub (idempotent — reuses the running server if one is up):

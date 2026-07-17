@@ -8,7 +8,9 @@ export type ReportMeta = {
   source_path: string;
 };
 
-type ReportModule = () => Promise<{ default: ComponentType<{ source: string }> }>;
+type ReportModule = () => Promise<{
+  default: ComponentType<{ source: string; components?: Record<string, unknown> }>;
+}>;
 type SourceModule = () => Promise<string>;
 
 const metaModules = import.meta.glob("../content/*/*/meta.json", {
